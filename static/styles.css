@@ -21,7 +21,10 @@ a:visited { color:#828282; text-decoration:none; }
 .comment { font-family:Verdana, Geneva, sans-serif; font-size:  9pt; }
 .hnname  { margin-right: 5px; }
 
-.tag { font-family:Verdana, Geneva, sans-serif; font-size:  9pt; color:#efefef; background-color:#191970; padding-top: 4px; padding-bottom: 4px; padding-left: 6px; padding-right: 6px }
+.tag { font-family:Verdana, Geneva, sans-serif; font-size:  9pt; 
+       color:#ffffff; background-color:#84BBEB; padding-top: 2px; 
+       padding-bottom: 2px; padding-left: 5px; padding-right: 5px;
+       white-space: nowrap; border-radius: 5px; }
 
 .comment a:link, .comment a:visited { text-decoration: underline; }
 .noshow { display: none; }
