@@ -37,7 +37,7 @@ class ArticleFetcher():
                 if article.prediction_input is None:
                     goose = Goose()
                     url = article.article_url
-                    if not url:
+                    if (not url) or url[:13] == "https://arxiv":
                         continue
                     print("getting " + url)
                     try:
@@ -57,7 +57,7 @@ class ArticleFetcher():
                     print("goosing")
                     goose = Goose()
                     url = article_info.get('url')
-                    if not url:
+                    if (not url) or url[:13] == "https://arxiv":
                         continue
                     print(url)
                     goosed_article = goose.extract(url=url)
