@@ -127,7 +127,7 @@ def add_article(label, story_id, article):
     print(label)
 
 
-def load_article(label_df):
+def load_articles(label_df):
     skipped_due_state = 0
     uncached_articles = []
 
@@ -166,6 +166,7 @@ def load_article(label_df):
 # Load supervised data in parallel as parsing can be slow
 #Parallel(n_jobs=2)(delayed(load_article)(label, story_id) for label, story_id in zipped_list)
 
+load_articles(label_df)
 df = DplyFrame(pd.DataFrame({"labels": labels,
                              "story_id": story_ids,
                              "features": topic_dicts}))

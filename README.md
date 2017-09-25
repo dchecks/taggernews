@@ -1,5 +1,9 @@
 ## Tagger News
 
+Currently the server setup will work but importing and analysis does not.
+I'm working on getting it going.
+
+
 Setup the environment
 ```
 git clone http://github.com/danrobinson/taggernews.git
