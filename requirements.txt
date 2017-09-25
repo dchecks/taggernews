@@ -1,3 +1,5 @@
+grequests
+goose
 joblib
 dplython
 appdirs==1.4.3
