@@ -145,7 +145,7 @@ def load_articles(label_df):
         except Article.DoesNotExist:
             uncached_articles.append((label, article_id))
 
-    print("Uncached articles: ", len(uncached_articles))
+    print("Uncached articles: " + str(len(uncached_articles)))
 
     if FETCH_NOT_CACHED:
         print("Fetching articles...")
@@ -153,12 +153,12 @@ def load_articles(label_df):
             print("Fetching " + str(article_id))
             article = ArticleFetcher().fetch_single(article_id)
             if article.state is not 0:
-                print("Skipping article: " + str(article_id) + " due to state: " + article.state)
+                print("Skipping article: " + str(article_id) + " due to state: " + str(article.state))
             else:
-                add_article(label, article_id, article_id)
+                add_article(label, article_id, article)
     else:
         print("Not attempting to fetch, set FETCH_NOT_CACHED if you want them, this can take a long time.")
-    print("Skipped due to invalid state: " + skipped_due_state)
+    print("Skipped due to invalid state: " + str(skipped_due_state))
 
 
 # Issue with requests in parallel mode
