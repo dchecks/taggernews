@@ -1,8 +1,9 @@
 from __future__ import print_function
+
+from django.utils import timezone
 import requests
 import sys
 
-import time
 from django.core.management.base import BaseCommand
 from goose import Goose
 
@@ -38,74 +39,75 @@ class ArticleFetcher:
                 article = Article.objects.create(
                     hn_id=article_id,
                     state=1,
-                    parsed=time.time()
-                )
-            elif (not url) or url[:13] == "https://arxiv":
-                print("No url for article ", article_id)
-                article = Article.objects.create(
-                    hn_id=article_id,
-                    state=2,
-                    parsed=time.time(),
-                    title=article_info.get('title'),
-                    article_url=article_info.get('url'), # still add it in case it's actually just bad
-                    score=article_info.get('score'),
-                    number_of_comments=article_info.get('descendants'),
-                    submitter=article_info.get('by'),
-                    timestamp=article_info.get('time'),
-                    rank=rank,
+                    parsed=timezone.now()
                 )
             else:
                 url = article_info.get('url')
-                try:
-                    article = Article.objects.get(hn_id=article_id)
-                    article.score = article_info.get('score')
-                    article.number_of_comments = article_info.get('descendants')
-                    article.rank = rank
-                    if article.prediction_input is None or article.state is not 0:
-                        goose = Goose()
-                        print("getting " + url)
-                        try:
-                            goosed_article = goose.extract(url=url)
-                            prediction_input = '%s|||\n\n%s' % (
-                                goosed_article.cleaned_text,
-                                goosed_article.meta_description,
-                            )
-                            article.prediction_input = prediction_input
-                            article.state = 0
-                        except:
-                            article.prediction_input = None
-                            article.state = 3
-                            print("Failed to load text for ", url)
-                    update_count += 1
-                except Article.DoesNotExist:
-                    print("goosing")
-                    goose = Goose()
-                    try:
-                        print(url)
-                        goosed_article = goose.extract(url=url)
-                        prediction_input = '%s|||\n\n%s' % (
-                            goosed_article.cleaned_text,
-                            goosed_article.meta_description,
-                        )
-                        state = 0
-                    except Exception as e:
-                        sys.stderr.write(str(e))
-                        state = 3
-
+                if (not url) or url[:13] == "https://arxiv":  # hack for goose as it doesnt like some unicode characters
+                    print("No url for article ", article_id)
                     article = Article.objects.create(
                         hn_id=article_id,
-                        state=state,
-                        parsed=time.time(),
+                        state=2,
+                        parsed=timezone.now(),
                         title=article_info.get('title'),
-                        article_url=article_info.get('url'),
+                        article_url=article_info.get('url'),  # still add it in case it's actually just bad
                         score=article_info.get('score'),
                         number_of_comments=article_info.get('descendants'),
                         submitter=article_info.get('by'),
                         timestamp=article_info.get('time'),
                         rank=rank,
-                        prediction_input=prediction_input
                     )
-                    create_count += 1
+                else:
+                    try:
+                        article = Article.objects.get(hn_id=article_id)
+                        article.score = article_info.get('score')
+                        article.number_of_comments = article_info.get('descendants')
+                        article.rank = rank
+                        if article.prediction_input is None or article.state is not 0:
+                            goose = Goose()
+                            print("getting " + url)
+                            try:
+                                goosed_article = goose.extract(url=url)
+                                prediction_input = '%s|||\n\n%s' % (
+                                    goosed_article.cleaned_text,
+                                    goosed_article.meta_description,
+                                )
+                                article.prediction_input = prediction_input
+                                article.state = 0
+                            except:
+                                article.prediction_input = None
+                                article.state = 3
+                                print("Failed to load text for ", url)
+                        update_count += 1
+                    except Article.DoesNotExist:
+                        print("goosing")
+                        goose = Goose()
+                        try:
+                            print(url)
+                            goosed_article = goose.extract(url=url)
+                            prediction_input = '%s|||\n\n%s' % (
+                                goosed_article.cleaned_text,
+                                goosed_article.meta_description,
+                            )
+                            state = 0
+                        except Exception as e:
+                            sys.stderr.write(str(e))
+                            state = 3
+
+                        article = Article.objects.create(
+                            hn_id=article_id,
+                            state=state,
+                            parsed=timezone.now(),
+                            title=article_info.get('title'),
+                            article_url=article_info.get('url'),
+                            score=article_info.get('score'),
+                            number_of_comments=article_info.get('descendants'),
+                            submitter=article_info.get('by'),
+                            timestamp=article_info.get('time'),
+                            rank=rank,
+                            prediction_input=prediction_input
+                        )
+                        create_count += 1
             article.save()
             ret_list.append(article)
             if rank % 10 == 0:
@@ -124,6 +126,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         top_article_ids = requests.get(TOP_ARTICLES_URL).json()
 
-        (articles, create_count, update_count) = ArticleFetcher.fetch(top_article_ids)
+        (articles, create_count, update_count) = ArticleFetcher().fetch(top_article_ids)
         self.stdout.write(self.style.SUCCESS(
             'Done. Added: %s, Updated: %s' % (create_count, update_count)))

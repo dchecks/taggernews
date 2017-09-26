@@ -32,7 +32,7 @@ class Article(models.Model):
     # 1 hn id not found,
     # 2 no url
     # 3 goose failure / no text
-    state = models.IntegreField(null=True)
+    state = models.IntegerField(null=True)
     parsed = models.DateTimeField()
     title = models.CharField(max_length=1500)
     article_url = models.URLField(max_length=1000, null=True)
