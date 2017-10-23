@@ -1,7 +1,7 @@
 .DS_Store
 
 *.npy
-
+*.gensim*
 *.sqlite3
 
 *.egg-info

@@ -1,0 +1,39 @@
+create database tagger;
+
+create user 'tagger_client'@'localhost' identified by 'probablyNotTheRealPassword';
+grant insert, select, update on tagger.* to 'tagger_client'@'localhost';
+FLUSH PRIVILEGES;
+
+create table tagger.tagger_article (
+    hn_id integer not null,
+    title varchar(1500),
+    state int,
+    parsed DateTime,
+    article_url varchar(1000),
+    score int,
+    number_of_comments int,
+    submitter varchar(100),
+    timestamp int,
+    rank int,
+    tagged TINYINT(1),
+    prediction_input mediumtext,
+    primary key (hn_id)
+);
+
+create table tagger.tagger_tag (
+    id int not null,
+    name varchar(300),
+    lowercase_name varchar(300),
+    primary key (id)
+);
+
+create table tagger.tagger_article_tag (
+    id int not null,
+    article_id integer not null,
+    tag_id integer not null,
+    primary key (id)
+);
+
+drop table tagger.tagger_article_tag;
+drop table tagger.tagger_tag;
+drop table tagger.tagger_article;
