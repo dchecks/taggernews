@@ -1,5 +1,4 @@
 grequests
-goose
 joblib
 dplython
 appdirs==1.4.3
@@ -38,3 +37,4 @@ nltk==3.2.2
 numpy==1.12.1
 scikit-learn==0.18.1
 sklearn==0.0
+mysqlclient==1.3.12
