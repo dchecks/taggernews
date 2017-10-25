@@ -20,11 +20,12 @@ from whitenoise.django import DjangoWhiteNoise
 from utils import make_time_filename
 
 # Django is only used here to fetch the data from djangodb
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+if __name__ == "__main__":
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
-application = get_wsgi_application()
-application = DjangoWhiteNoise(application)
+    application = get_wsgi_application()
+    application = DjangoWhiteNoise(application)
 # Needs to be imported after django
 from tagger.models import Article
 

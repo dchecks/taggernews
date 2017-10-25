@@ -1,14 +1,19 @@
+import glob
+import os
 import numpy as np
 from django.core.management.base import BaseCommand
+from django.core.wsgi import get_wsgi_application
 from gensim import corpora, models, utils
 from sklearn.externals import joblib
+from whitenoise.django import DjangoWhiteNoise
 
+if __name__ == "__main__":
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tagger.settings")
+    application = get_wsgi_application()
+    application = DjangoWhiteNoise(application)
+
+from django.conf import settings
 from tagger.models import Article, Tag
-
-# These need to be changed to an appropriate model and date
-TOPIC_MODEL = "ml_models/generated/model_100topics_10passSep24_0705.gensim"
-DICTIONARY = "dictionaries/hn_dictionarySep24_0705.pkl"
-LR_DICTIONARY = "ml_models/predictions/randomforest_model_Oct24_2228.pkl"
 
 
 class TextTagger(object):
@@ -55,35 +60,27 @@ class TextTagger(object):
         return cls(topic_modeler, gensim_dict, lr_dict, *args, **kwargs)
 
 
-text_tagger = TextTagger.init_from_files(TOPIC_MODEL, DICTIONARY, LR_DICTIONARY, threshold=0.3)
-
-
-class Command(BaseCommand):
-    help = 'tags articles'
-
-    def handle(self, *args, **options):
-        articles = Article.objects.filter(state=0)
-
-        for i, article in enumerate(articles):
-            try:
-                prediction_input = article.prediction_input
-                if prediction_input is None:
-                    raise Exception("No prediction_input")
-
-                # Make tag predictions
-                prediction_input = prediction_input.encode('utf-8')
-                predicted_tags = text_tagger.text_to_tags(prediction_input)
-
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(
-                    'Failed to tag article %s. Error: %s.' % (
-                        article.hn_id, e)))
-                continue
+def tag_away(text_tagger, articles):
+    for i, article in enumerate(articles):
+        try:
+            prediction_input = article.prediction_input
+            if prediction_input is None:
+                raise Exception("No prediction_input")
 
             # Make tag predictions
-            prediction_input = prediction_input.decode('utf-8')
+            prediction_input = prediction_input.encode('utf-8')
             predicted_tags = text_tagger.text_to_tags(prediction_input)
 
+        except Exception as e:
+            print('Failed to tag article %s. Error: %s.' % (article.hn_id, e))
+            article.state = 12
+            article.save()
+            continue
+
+        if len(predicted_tags) == 0:
+            article.state = 11
+            article_tags = []
+        else:
             # Add tags to db (only matters if there's a previously unseen tag)
             existing_tags = Tag.objects.filter(name__in=predicted_tags)
             new_tags = set(predicted_tags) - set([t.name for t in existing_tags])
@@ -95,9 +92,33 @@ class Command(BaseCommand):
             article.tags.add(*article_tags)
 
             article.state = 10
-            article.save()
 
-            self.stdout.write(self.style.SUCCESS(
-                'Tagged article %s (%s of %s)\n%s\n%s' % (
-                    article.hn_id, i + 1, articles.count(), article.title, article_tags)
-            ))
+        article.save()
+
+        print('Tagged article %s (%s of %s)\n%s\n%s' %
+              (article.hn_id, i + 1, articles.count(), article.title, article_tags))
+
+
+def latest_resources():
+    topic_model = max(glob.iglob(settings.BASE_DIR + '/ml_models/generated/model_*topics_*pass*.gensim'))
+    dictionary = max(glob.iglob(settings.BASE_DIR + '/dictionaries/hn_dictionary*.pkl'))
+    lr_dictionary = max(glob.iglob(settings.BASE_DIR + '/ml_models/predictions/randomforest_model_*.pkl'))
+    return topic_model, dictionary, lr_dictionary
+
+
+def tag():
+    topic_model, dictionary, lr_dictionary = latest_resources()
+    text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
+    articles = Article.objects.filter(state=0)
+    tag_away(text_tagger, articles)
+
+
+class Command(BaseCommand):
+    help = 'tags articles'
+
+    def handle(self, *args, **options):
+        tag()
+
+
+if __name__ == "__main__":
+    tag()

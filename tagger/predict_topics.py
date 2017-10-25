@@ -15,9 +15,10 @@ from whitenoise.django import DjangoWhiteNoise
 
 from utils import make_time_filename
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
-application = get_wsgi_application()
-application = DjangoWhiteNoise(application)
+if __name__ == "__main__":
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+    application = get_wsgi_application()
+    application = DjangoWhiteNoise(application)
 # Needs to be imported after django
 from tagger.models import Article
 from tagger.management.commands.refresh_top_articles import ArticleFetcher
@@ -29,7 +30,7 @@ C_VALUE = 1.0
 # If true will fetch articles that are not in the db, otherwise not include them in model
 FETCH_NOT_CACHED = True
 # Limit the number of articles to go out and fetch for this run. Can be overly time consuming
-DEBUG = False
+DEBUG = True
 DEBUG_FETCH_MAX = 100
 
 # Trained data

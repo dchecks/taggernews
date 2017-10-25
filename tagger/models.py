@@ -14,6 +14,7 @@ import datetime
 # Create your ml_models here.
 
 class Tag(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=300)
     lowercase_name = models.CharField(max_length=300)
 

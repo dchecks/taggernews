@@ -21,14 +21,14 @@ create table tagger.tagger_article (
 );
 
 create table tagger.tagger_tag (
-    id int not null,
+    id int not null auto_increment,
     name varchar(300),
     lowercase_name varchar(300),
     primary key (id)
 );
 
-create table tagger.tagger_article_tag (
-    id int not null,
+create table tagger.tagger_article_tags(
+    id int not null auto_increment,
     article_id integer not null,
     tag_id integer not null,
     primary key (id)
