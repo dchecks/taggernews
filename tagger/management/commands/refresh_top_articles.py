@@ -27,6 +27,7 @@ emoji_regex = re.compile(
     u"(\ud83c[\udde0-\uddff])"  # flags (iOS)
     "+", flags=re.UNICODE)
 
+
 class ArticleFetcher:
 
     def __init__(self):

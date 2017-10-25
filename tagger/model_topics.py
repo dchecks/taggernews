@@ -20,7 +20,7 @@ from whitenoise.django import DjangoWhiteNoise
 from utils import make_time_filename
 
 # Django is only used here to fetch the data from djangodb
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "site.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 application = get_wsgi_application()
@@ -38,7 +38,7 @@ NUM_PASSES = 10
 
 def all_article_text():
     """Returns all text for articles in the database up to the limit"""
-    articles = Article.objects.all()[:IMPORT_LIMIT]
+    articles = Article.objects.all().filter(state=0)[:IMPORT_LIMIT]
     print("Selected " + str(len(articles)) + " articles for text tokenisation")
     input_text = []
     for art in articles:

@@ -5,10 +5,10 @@ from sklearn.externals import joblib
 
 from tagger.models import Article, Tag
 
-# These need to be change to an appropriate model and date
-TOPIC_MODEL = "analyze_hn/model_100topics_10passSep19_1205.gensim"
-DICTIONARY = "analyze_hn/hn_dictionarySep19_1201.pkl"
-LR_DICTIONARY = "articles/model/serialized_model/rf_models.pkl"
+# These need to be changed to an appropriate model and date
+TOPIC_MODEL = "ml_models/generated/model_100topics_10passSep24_0705.gensim"
+DICTIONARY = "dictionaries/hn_dictionarySep24_0705.pkl"
+LR_DICTIONARY = "ml_models/predictions/randomforest_model_Oct24_2228.pkl"
 
 
 class TextTagger(object):
@@ -62,8 +62,7 @@ class Command(BaseCommand):
     help = 'tags articles'
 
     def handle(self, *args, **options):
-        articles = Article.objects.filter(
-            article_url__isnull=False)
+        articles = Article.objects.filter(state=0)
 
         for i, article in enumerate(articles):
             try:
@@ -95,7 +94,7 @@ class Command(BaseCommand):
             article_tags = Tag.objects.filter(id__in=[t.id for t in article_tags])
             article.tags.add(*article_tags)
 
-            article.tagged = True
+            article.state = 10
             article.save()
 
             self.stdout.write(self.style.SUCCESS(
