@@ -13,6 +13,7 @@ from joblib import delayed
 from tagger.models import Article
 
 TOP_ARTICLES_URL = 'https://hacker-news.firebaseio.com/v0/topstories/.json'
+LIMIT_TOP_RESULTS = 50
 ITEM_URL = 'https://hacker-news.firebaseio.com/v0/item/%s.json'
 THROTTLE = 5
 THREAD_COUNT = 1  # Issues with this being >1 on OSX
@@ -40,17 +41,6 @@ class ArticleFetcher:
             @:param update_rank to be used with
             """
         ret_list = Parallel(n_jobs=THREAD_COUNT)(delayed(fetch_me)(aid) for aid in article_ids)
-        # for aid in article_ids:
-        #     ret_list = fetch_me(self, aid)
-
-        # pool = mp.Pool(processes=2)
-        # ret_list = pool.map(fetch_me, article_ids)
-
-        if update_rank:
-            # TODO re-enable, maybe
-            # Updates all others that haven't just been ranked to not ranked
-            Article.objects.exclude(hn_id__in=article_ids).update(rank=None)
-    # ret_list = (self.goose_this(grequests.get(ITEM_URL % article_id), article_id) for article_id in article_ids)
 
         return ret_list
 
@@ -156,10 +146,21 @@ def fetch_me(article_id):
 
 
 class Command(BaseCommand):
-    help = 'Closes the specified poll for voting'
+    help = 'Gets and ranks the homepage articles'
 
     def handle(self, *args, **options):
-        top_article_ids = requests.get(TOP_ARTICLES_URL).json()
+        top_article_ids = requests.get(TOP_ARTICLES_URL).json()[:LIMIT_TOP_RESULTS]
 
         articles = ArticleFetcher().fetch(top_article_ids)
+
+        # Updates all to not ranked
+        Article.objects.exclude(rank__isnull=True).update(rank=None)
+
+        print('New order:')
+        for i, article_id in enumerate(top_article_ids):
+            arty = Article.objects.get(hn_id=article_id)
+            arty.rank = i
+            arty.save()
+            print(str(i) + ": " + str(article_id))
+
         self.stdout.write(self.style.SUCCESS('Done. Fetched: %s' % (len(articles))))

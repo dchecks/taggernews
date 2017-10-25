@@ -12,8 +12,8 @@ def news(request, page="1"):
 
   start = (page_number - 1) * 30
   end = page_number * 30
-
-  articles = Article.objects.all().exclude(rank__isnull=True).exclude(tags__isnull=True).order_by('rank').prefetch_related('tags')[start:end]
+  #.exclude(tags__isnull=True)
+  articles = Article.objects.all().exclude(rank__isnull=True).order_by('rank').prefetch_related('tags')[start:end]
 
   context = {
     "articles": articles,

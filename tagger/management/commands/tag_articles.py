@@ -109,7 +109,8 @@ def latest_resources():
 def tag():
     topic_model, dictionary, lr_dictionary = latest_resources()
     text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
-    articles = Article.objects.filter(state=0)
+    print('Loaded resources, created tagger')
+    articles = Article.objects.filter(state=0).order_by('-rank')
     tag_away(text_tagger, articles)
 
 
