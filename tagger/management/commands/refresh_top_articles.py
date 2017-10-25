@@ -131,18 +131,26 @@ def fetch_me(article_id):
     if not article:
         # load the meta from HN
         article = hn_fetch(article_id)
-
+        article.save()
     if not article.state or article.state is 3:
         # Get the article text
-        (text, state) = goose_fetch(article.article_url)
-        if state is 0:
-            article.state = state
-            article.prediction_input = emoji_regex.sub(u'\uFFFD', text) # strip emoji characters aka 4 byte chars
-        else:
-            print("Failed to goose article: " + str(article.hn_id))
-            article.state = state
+        try:
+            (text, state) = goose_fetch(article.article_url)
+            if state is 0:
+                article.prediction_input = emoji_regex.sub(u'\uFFFD', text)  # strip emoji characters aka 4 byte chars
+                article.state = state
+            else:
+                print("Failed to goose article: " + str(article.hn_id))
+                article.state = state
 
-    article.save()
+            article.save()
+        except Exception as e:
+            print("Failed to save prediction input to db for " + str(article.hn_id))
+            print(e)
+            article.state = 5
+            article.prediction_input = None
+            article.save()
+
     return article
 
 

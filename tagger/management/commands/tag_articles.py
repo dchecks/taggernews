@@ -5,6 +5,11 @@ from sklearn.externals import joblib
 
 from tagger.models import Article, Tag
 
+# These need to be change to an appropriate model and date
+TOPIC_MODEL = "analyze_hn/model_100topics_10passSep19_1205.gensim"
+DICTIONARY = "analyze_hn/hn_dictionarySep19_1201.pkl"
+LR_DICTIONARY = "articles/model/serialized_model/rf_models.pkl"
+
 
 class TextTagger(object):
     """Object which tags articles. Needs topic modeler and """
@@ -50,12 +55,7 @@ class TextTagger(object):
         return cls(topic_modeler, gensim_dict, lr_dict, *args, **kwargs)
 
 
-text_tagger = TextTagger.init_from_files(
-    "analyze_hn/model_100topics_10passSep19_1205.gensim",
-    "analyze_hn/hn_dictionarySep19_1201.pkl",
-    "articles/model/serialized_model/rf_models.pkl",
-    threshold=0.3,
-)
+text_tagger = TextTagger.init_from_files(TOPIC_MODEL, DICTIONARY, LR_DICTIONARY, threshold=0.3)
 
 
 class Command(BaseCommand):

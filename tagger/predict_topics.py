@@ -28,6 +28,9 @@ LOGISTIC_MODEL_NAME = "./ml_models/predictions/logistic_model"
 C_VALUE = 1.0
 # If true will fetch articles that are not in the db, otherwise not include them in model
 FETCH_NOT_CACHED = True
+# Limit the number of articles to go out and fetch for this run. Can be overly time consuming
+DEBUG = False
+DEBUG_FETCH_MAX = 100
 
 # Trained data
 label_df = DplyFrame(pd.read_csv("./supervised_topics.csv"))
@@ -131,7 +134,7 @@ def load_articles(label_df):
     for label, article_id in zip(label_df.topic, label_df.id):
 
         # DEBUG
-        if len(uncached_articles) is 100:
+        if DEBUG and len(uncached_articles) is DEBUG_FETCH_MAX:
             print("Stopped loading articles early due to DEBUG flag")
             break
 

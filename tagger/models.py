@@ -33,6 +33,7 @@ class Article(models.Model):
     # 2 no url
     # 3 waiting for prediction_text parsing
     # 4 goose failure / no text
+    # 5 db save failure of text
     state = models.IntegerField(null=True)
     parsed = models.DateTimeField()
     title = models.CharField(max_length=1500)

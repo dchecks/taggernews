@@ -1,7 +1,15 @@
 ## Tagger News
 
-Currently the server setup will work but importing and analysis does not.
-I'm working on getting it going.
+Currently this is still a work in progress.
+
+The server setup is now using mysql, a simple schema creation script can be found in the 'creates' file in the root directory.
+If you want you can still use sqlite, just change the connection string in the settings.py file.
+
+Importing now works, but is slow due to a python bug with OSX.
+This prevents multiprocess parsing of the supervised_topics list which is needed for initial model building.
+
+
+Analysis is currently in an unknown state. I haven't been able to get it to work with the nuember of model entries,
 
 
 Setup the environment
