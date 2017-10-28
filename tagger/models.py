@@ -22,7 +22,18 @@ class Tag(models.Model):
         return self.name
 
     def get_relative_url(self):
-        return '/tags/' + self.name.lower()
+        return "/tags/" + self.name.lower()
+
+
+class User(models.Model):
+    id = models.CharField(primary_key=True, max_length=15)
+    opt_out = models.BooleanField(default=False)
+
+
+class Item(models.Model):
+    hn_id = models.IntegerField(primary_key=True)
+    submitter = models.ForeignKey("User", on_delete=models.PROTECT)
+    type = models.CharField(max_length=10)
 
 
 class Article(models.Model):
@@ -44,7 +55,7 @@ class Article(models.Model):
     article_url = models.URLField(max_length=1000, null=True)
     score = models.IntegerField()
     number_of_comments = models.IntegerField(null=True)
-    submitter = models.CharField(max_length=500)
+    submitter = models.ForeignKey("User", db_column='submitter', on_delete=models.PROTECT)
     timestamp = models.IntegerField()
     tags = models.ManyToManyField(Tag, blank=True)
     rank = models.IntegerField(null=True)

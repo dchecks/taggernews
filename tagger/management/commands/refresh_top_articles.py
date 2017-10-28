@@ -10,10 +10,10 @@ from goose import Goose
 from joblib import Parallel
 from joblib import delayed
 
-from tagger.models import Article
+from tagger.models import Article, User
 
 TOP_ARTICLES_URL = 'https://hacker-news.firebaseio.com/v0/topstories/.json'
-LIMIT_TOP_RESULTS = 50
+LIMIT_TOP_RESULTS = 300
 ITEM_URL = 'https://hacker-news.firebaseio.com/v0/item/%s.json'
 THROTTLE = 5
 THREAD_COUNT = 1  # Issues with this being >1 on OSX
@@ -101,6 +101,8 @@ def hn_fetch(article_id):
         else:
             state = 3
 
+        submitter, created = User.objects.get_or_create(id=article_info.get('by'))
+
         article = Article.objects.create(
             hn_id=article_id,
             state=state,
@@ -109,7 +111,7 @@ def hn_fetch(article_id):
             article_url=article_info.get('url'),
             score=article_info.get('score'),
             number_of_comments=article_info.get('descendants'),
-            submitter=article_info.get('by'),
+            submitter=submitter,
             timestamp=article_info.get('time'),
         )
     return article

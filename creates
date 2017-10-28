@@ -12,11 +12,24 @@ create table tagger.tagger_article (
     article_url varchar(1000),
     score int,
     number_of_comments int,
-    submitter varchar(100),
+    submitter varchar(15),
     timestamp int,
     rank int,
     tagged TINYINT(1),
     prediction_input mediumtext,
+    primary key (hn_id)
+);
+
+create table tagger.tagger_user (
+    id varchar(15) not null,
+    opt_out bit not null default 0,
+    primary key (id)
+);
+
+create table tagger.tagger_item (
+    hn_id integer not null,
+    submitter varchar(15) not null,
+    type varchar(10) not null,
     primary key (hn_id)
 );
 
@@ -33,7 +46,3 @@ create table tagger.tagger_article_tags(
     tag_id integer not null,
     primary key (id)
 );
-
-drop table tagger.tagger_article_tag;
-drop table tagger.tagger_tag;
-drop table tagger.tagger_article;
