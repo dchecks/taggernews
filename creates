@@ -30,6 +30,8 @@ create table tagger.tagger_item (
     hn_id integer not null,
     submitter varchar(15) not null,
     type varchar(10) not null,
+    parent int,
+    top_parent int,
     primary key (hn_id)
 );
 

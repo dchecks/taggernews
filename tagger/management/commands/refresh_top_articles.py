@@ -10,7 +10,7 @@ from goose import Goose
 from joblib import Parallel
 from joblib import delayed
 
-from tagger.models import Article, User
+from tagger.models import Article, User, Item
 
 TOP_ARTICLES_URL = 'https://hacker-news.firebaseio.com/v0/topstories/.json'
 LIMIT_TOP_RESULTS = 300
@@ -35,12 +35,13 @@ class ArticleFetcher:
         pass
 
     # Only want to update_rank when getting from the front 'ranked' page
-    def fetch(self, article_ids, update_rank=False):
+    def fetch(self, hn_ids, update_rank=False):
         """
-            Given a list of article ids, collect them and their text in parallel
+            Given a list of hn ids, collect them in parallel
+            if the ids correspond to articles their text will also be fetched
             @:param update_rank to be used with
             """
-        ret_list = Parallel(n_jobs=THREAD_COUNT)(delayed(fetch_me)(aid) for aid in article_ids)
+        ret_list = Parallel(n_jobs=THREAD_COUNT)(delayed(fetch_me)(aid) for aid in hn_ids)
 
         return ret_list
 
@@ -53,7 +54,7 @@ def fetch_single(self, fetch_id):
     else:
         return None
 
-
+"""Fetch the text from the given url"""
 def goose_fetch(article_url):
     print("goosing " + article_url)
     goose = Goose()
@@ -72,26 +73,61 @@ def goose_fetch(article_url):
     return prediction_input, state
 
 
-def db_fetch(article_id):
-    print("Fetching " + str(article_id))
+"""Attempt to fetch from the db"""
+def db_fetch(hn_id):
     try:
-        article = Article.objects.get(hn_id=article_id)
+        item = Article.objects.get(hn_id=hn_id)
+        print("Fetching from db " + str(hn_id))
     except Article.DoesNotExist:
-        article = None
+        item = None
+        # TODO Remove this hackery when article subclasses item
+        try:
+            item = Item.objects.get(hn_id=hn_id)
+        except Item.DoesNotExist:
+            pass
 
-    return article
+    return item
 
-
+""" Fetch the meta data from the hn api"""
 def hn_fetch(article_id):
     print("Fetching from hn")
     article_info = requests.get(ITEM_URL % article_id).json()
 
     if article_info is None:
         print("HN id unknown ", article_id)
-        article = Article.objects.create(
+        return Article.objects.create(
             hn_id=article_id,
             state=1,
             parsed=timezone.now()
+        )
+    submitter_id = article_info.get('by')
+    if submitter_id is None:
+        submitter_id = 'deleted'
+    submitter, created = User.objects.get_or_create(id=submitter_id)
+    if article_info.get('type') != 'story':
+        # Recurse to get the top_parent
+        parent_id = article_info.get('parent')
+        if parent_id == None:
+            print('Failed to find the top parent for', parent_id)
+            top_parent = None
+        else:
+            print('Recursing to get', parent_id)
+            parent_item = fetch_me(parent_id)
+            # When an article is returned, we know we've hit the top
+            if isinstance(parent_item, Article):
+                print('Found top parent', parent_id)
+                top_parent = parent_item
+                parent_item = None
+            else:
+                # the top_parent is at least 1 grandparent away, or not found
+                top_parent = parent_item.top_parent
+
+        return Item(
+            hn_id=article_id,
+            submitter=submitter,
+            type=article_info.get('type'),
+            parent=parent_item,
+            top_parent=top_parent
         )
     else:
         url = article_info.get('url')
@@ -100,10 +136,7 @@ def hn_fetch(article_id):
             state = 2
         else:
             state = 3
-
-        submitter, created = User.objects.get_or_create(id=article_info.get('by'))
-
-        article = Article.objects.create(
+        return Article.objects.create(
             hn_id=article_id,
             state=state,
             parsed=timezone.now(),
@@ -114,37 +147,41 @@ def hn_fetch(article_id):
             submitter=submitter,
             timestamp=article_info.get('time'),
         )
-    return article
 
 
-def fetch_me(article_id):
+def fetch_me(hn_id):
     # First, attempt to load straight from db
-    article = db_fetch(article_id)
+    item = db_fetch(hn_id)
 
-    if not article:
+    if not item:
         # load the meta from HN
-        article = hn_fetch(article_id)
-        article.save()
-    if not article.state or article.state is 3:
-        # Get the article text
-        try:
-            (text, state) = goose_fetch(article.article_url)
-            if state is 0:
-                article.prediction_input = emoji_regex.sub(u'\uFFFD', text)  # strip emoji characters aka 4 byte chars
-                article.state = state
-            else:
-                print("Failed to goose article: " + str(article.hn_id))
-                article.state = state
+        item = hn_fetch(hn_id)
+        item.save()
 
-            article.save()
-        except Exception as e:
-            print("Failed to save prediction input to db for " + str(article.hn_id))
-            print(e)
-            article.state = 5
-            article.prediction_input = None
-            article.save()
+    if not isinstance(item, Article):
+        return item
+    else:
+        article = item
+        if not article.state or article.state is 3:
+            # Get the article text
+            try:
+                (text, state) = goose_fetch(article.article_url)
+                if state is 0:
+                    article.prediction_input = emoji_regex.sub(u'\uFFFD', text)  # strip emoji characters aka 4 byte chars
+                    article.state = state
+                else:
+                    print("Failed to goose article: " + str(article.hn_id))
+                    article.state = state
 
-    return article
+                article.save()
+            except Exception as e:
+                print("Failed to save prediction input to db for " + str(article.hn_id))
+                print(e)
+                article.state = 5
+                article.prediction_input = None
+                article.save()
+
+        return article
 
 
 class Command(BaseCommand):

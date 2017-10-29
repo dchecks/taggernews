@@ -25,15 +25,34 @@ class Tag(models.Model):
         return "/tags/" + self.name.lower()
 
 
+def func_top_parent(item):
+    return item.top_parent
+
+
 class User(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     opt_out = models.BooleanField(default=False)
 
+    def has_cached(self, hn_id):
+        for article in self.article_set.all():
+            if article.hn_id == hn_id:
+                return True
+        for item in self.item_set.all():
+            if item.hn_id == hn_id:
+                return True
+
+
+    """Returns all articles this user has interacted with"""
+    def all_articles(self):
+        top_parents = map(func_top_parent, self.item_set.all())
+        return list(self.article_set.all()) + top_parents
 
 class Item(models.Model):
     hn_id = models.IntegerField(primary_key=True)
-    submitter = models.ForeignKey("User", on_delete=models.PROTECT)
+    submitter = models.ForeignKey("User", db_column='submitter', on_delete=models.PROTECT)
     type = models.CharField(max_length=10)
+    parent = models.ForeignKey("Item", db_column='parent', on_delete=models.PROTECT)
+    top_parent = models.ForeignKey("Article", db_column='top_parent', on_delete=models.PROTECT)
 
 
 class Article(models.Model):
