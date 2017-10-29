@@ -63,13 +63,13 @@ class TextTagger(object):
 def tag_away(text_tagger, articles):
     for i, article in enumerate(articles):
         try:
-            prediction_input = article.prediction_input
-            if prediction_input is None:
+            articletext = article.articletext.text
+            if articletext is None:
                 raise Exception("No prediction_input")
 
             # Make tag predictions
-            prediction_input = prediction_input.encode('utf-8')
-            predicted_tags = text_tagger.text_to_tags(prediction_input)
+            articletext = articletext.encode('utf-8')
+            predicted_tags = text_tagger.text_to_tags(articletext)
 
         except Exception as e:
             print('Failed to tag article %s. Error: %s.' % (article.hn_id, e))

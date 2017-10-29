@@ -37,23 +37,23 @@ MODEL_NAME = "./ml_models/generated/model"
 NUM_TOPICS = 100
 NUM_PASSES = 10
 
-def all_article_text():
+def all_articletext():
     """Returns all text for articles in the database up to the limit"""
     articles = Article.objects.all().filter(state=0)[:IMPORT_LIMIT]
     print("Selected " + str(len(articles)) + " articles for text tokenisation")
     input_text = []
     for art in articles:
-        input_text.append(art.prediction_input)
+        input_text.append(art.articletext.text)
     return input_text
 
 
 # Load data
 logging.info("Reading articles...")
-article_texts = all_article_text()
+articletexts = all_articletext()
 
 # Convert to list of tokens
-article_texts = [a.lower() for a in article_texts]
-token_list = [list(utils.tokenize(article_text)) for article_text in article_texts]
+articletexts = [a.lower() for a in articletexts]
+token_list = [list(utils.tokenize(articletext)) for articletext in articletexts]
 
 # Get high frequency words
 token_counts = Counter(itertools.chain(*token_list))

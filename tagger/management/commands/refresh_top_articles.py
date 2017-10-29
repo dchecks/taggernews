@@ -10,7 +10,7 @@ from goose import Goose
 from joblib import Parallel
 from joblib import delayed
 
-from tagger.models import Article, User, Item
+from tagger.models import Article, User, Item, ArticleText
 
 TOP_ARTICLES_URL = 'https://hacker-news.firebaseio.com/v0/topstories/.json'
 LIMIT_TOP_RESULTS = 300
@@ -54,13 +54,14 @@ def fetch_single(self, fetch_id):
     else:
         return None
 
-"""Fetch the text from the given url"""
+
 def goose_fetch(article_url):
+    """Fetch the text from the given url"""
     print("goosing " + article_url)
     goose = Goose()
     try:
         goosed_article = goose.extract(url=article_url)
-        prediction_input = '%s|||\n\n%s' % (
+        text = '%s|||\n\n%s' % (
             goosed_article.cleaned_text,
             goosed_article.meta_description,
         )
@@ -68,13 +69,13 @@ def goose_fetch(article_url):
     except Exception as e:
         sys.stderr.write(str(e))
         state = 3
-        prediction_input = None
+        text = None
 
-    return prediction_input, state
+    return text, state
 
 
-"""Attempt to fetch from the db"""
 def db_fetch(hn_id):
+    """Attempt to fetch from the db"""
     try:
         item = Article.objects.get(hn_id=hn_id)
         print("Fetching from db " + str(hn_id))
@@ -88,9 +89,10 @@ def db_fetch(hn_id):
 
     return item
 
-""" Fetch the meta data from the hn api"""
+
 def hn_fetch(article_id):
-    print("Fetching from hn")
+    """ Fetch the meta data from the hn api"""
+    print("Fetching from hn " + str(article_id))
     article_info = requests.get(ITEM_URL % article_id).json()
 
     if article_info is None:
@@ -110,6 +112,7 @@ def hn_fetch(article_id):
         if parent_id == None:
             print('Failed to find the top parent for', parent_id)
             top_parent = None
+            parent_item = None
         else:
             print('Recursing to get', parent_id)
             parent_item = fetch_me(parent_id)
@@ -162,13 +165,18 @@ def fetch_me(hn_id):
         return item
     else:
         article = item
-        if not article.state or article.state is 3:
+        if article.state is None or article.state is 3:
             # Get the article text
             try:
                 (text, state) = goose_fetch(article.article_url)
                 if state is 0:
-                    article.prediction_input = emoji_regex.sub(u'\uFFFD', text)  # strip emoji characters aka 4 byte chars
+                    articletext = ArticleText( article=article,
+                                                # strip emoji characters aka 4 byte chars
+                                                text=emoji_regex.sub(u'\uFFFD', text),
+                                                parsed=timezone.now())
+                    article.articletext = articletext
                     article.state = state
+                    articletext.save()
                 else:
                     print("Failed to goose article: " + str(article.hn_id))
                     article.state = state
@@ -178,7 +186,7 @@ def fetch_me(hn_id):
                 print("Failed to save prediction input to db for " + str(article.hn_id))
                 print(e)
                 article.state = 5
-                article.prediction_input = None
+                article.articletext = None
                 article.save()
 
         return article
@@ -197,9 +205,12 @@ class Command(BaseCommand):
 
         print('New order:')
         for i, article_id in enumerate(top_article_ids):
-            arty = Article.objects.get(hn_id=article_id)
-            arty.rank = i
-            arty.save()
-            print(str(i) + ": " + str(article_id))
+            try:
+                arty = Article.objects.get(hn_id=article_id)
+                arty.rank = i
+                arty.save()
+                print(str(i) + ': ' + str(article_id))
+            except Article.DoesNotExist:
+                print('Skipping ' + str(i) + ': ' + str(article_id))
 
         self.stdout.write(self.style.SUCCESS('Done. Fetched: %s' % (len(articles))))

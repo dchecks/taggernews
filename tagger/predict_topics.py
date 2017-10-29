@@ -55,7 +55,7 @@ def story_id_to_topicdict(article, trained_model=lda):
     """Given an article, read in the data and return the LDA topics as a
     dictionary of topic_id -> weight.
     """
-    return article_to_dict(article.prediction_input, trained_model)
+    return article_to_dict(article.articletext.text, trained_model)
 
 
 def create_logistic_model(df, _story_ids, data):

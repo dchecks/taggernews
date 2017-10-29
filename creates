@@ -4,6 +4,13 @@ create user 'tagger_client'@'localhost' identified by 'probablyNotTheRealPasswor
 grant insert, select, update on tagger.* to 'tagger_client'@'localhost';
 FLUSH PRIVILEGES;
 
+create table tagger.tagger_articleText (
+    article_id integer not null,
+    parsed DateTime not null,
+    article_text mediumtext not null,
+    primary key (article_id)
+);
+
 create table tagger.tagger_article (
     hn_id integer not null,
     title varchar(1500),
@@ -16,7 +23,6 @@ create table tagger.tagger_article (
     timestamp int,
     rank int,
     tagged TINYINT(1),
-    prediction_input mediumtext,
     primary key (hn_id)
 );
 
@@ -48,3 +54,8 @@ create table tagger.tagger_article_tags(
     tag_id integer not null,
     primary key (id)
 );
+
+
+insert into tagger_articleText (article_id, parsed, prediction_input)
+select hn_id, parsed, prediction_input from tagger_article;
+

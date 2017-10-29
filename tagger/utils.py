@@ -2,10 +2,10 @@ import time
 
 
 def examine_articles(text_tagger, articles, num_articles=50, num_char=200):
-    for idx, article_text in enumerate(articles[:num_articles]):
-        if len(article_text) >= 20:
-            print(idx, article_text[:num_char].replace("\n", ""))
-            print(text_tagger.text_to_tags(article_text))
+    for idx, articletext in enumerate(articles[:num_articles]):
+        if len(articletext) >= 20:
+            print(idx, articletext[:num_char].replace("\n", ""))
+            print(text_tagger.text_to_tags(articletext))
             print()
 
 

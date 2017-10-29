@@ -79,7 +79,7 @@ class Article(models.Model):
     tags = models.ManyToManyField(Tag, blank=True)
     rank = models.IntegerField(null=True)
     tagged = models.BooleanField(default=False)
-    prediction_input = models.TextField(null=True)
+
 
     def __unicode__(self):
         return self.title
@@ -107,3 +107,9 @@ class Article(models.Model):
 
     def get_absolute_url(self):
         return self.article_url or "https://news.ycombinator.com/item?id=" + str(self.hn_id)
+
+
+class ArticleText(models.Model):
+    article = models.OneToOneField(Article, on_delete=models.CASCADE, primary_key=True)
+    parsed = models.DateTimeField()
+    text = models.TextField(null=True)
