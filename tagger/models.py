@@ -32,6 +32,7 @@ def func_top_parent(item):
 class User(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     opt_out = models.BooleanField(default=False)
+    last_parsed = models.DateTimeField()
 
     def has_cached(self, hn_id):
         for article in self.article_set.all():

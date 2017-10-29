@@ -2,6 +2,7 @@ import sys
 import os
 
 import requests
+from datetime import datetime, timedelta
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
 from django.utils import timezone
@@ -16,6 +17,7 @@ from tagger.models import Article, User, Item
 from tagger.management.commands.refresh_top_articles import ArticleFetcher
 
 TOP_ARTICLES_URL = 'https://hacker-news.firebaseio.com/v0/user/'
+USER_REFRESH_DELTA = timedelta(days=1)
 
 arty = ArticleFetcher()
 black_list = list(User.objects.filter(opt_out=True).values_list('id', flat=True))
@@ -31,33 +33,46 @@ def fetch_user(username):
     print('Fetching user ' + username)
     to_fetch = []
 
-    if username not in black_list:
+    if username in black_list:
+        print('User on blacklist, ' + username)
+        return None
+
+    try:
+        user = User.objects.get(id=username)
+        threshold = timezone.now() - USER_REFRESH_DELTA
+        if user.last_parsed is None or user.last_parsed < threshold:
+            hn_refresh = True
+        else:
+            hn_refresh = False
+    except User.DoesNotExist:
+        hn_refresh = True
+
+    if hn_refresh:
         user_info = requests.get(TOP_ARTICLES_URL + username + '.json').json()
         if not user_info:
             print('User doesn\'t exist, ' + username)
             return None
-    else:
-        print('User on blacklist, ' + username)
-        return None
+        user, created = User.objects.get_or_create(id=username, opt_out=False)
+        if created:
+            print('Fetching unknown user:', username)
+            to_fetch = user_info['submitted']
+        else:
+            for item_str in user_info['submitted']:
+                item_id = int(item_str)
+                if not user.has_cached(item_id):
+                    # havent found our id, must be new
+                    to_fetch.append(item_id)
+        if to_fetch:
+            print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
+            arty.fetch(to_fetch)
+            refresh_user(user)
+        else:
+            print(username + ' needed no update')
 
-    user, created = User.objects.get_or_create(id=username)
-    if created:
-        print('Fetching unknown user:', username)
-        to_fetch = user_info['submitted']
+        user.last_parsed = timezone.now()
+        user.save()
     else:
-        for item_str in user_info['submitted']:
-            item_id = int(item_str)
-            if not user.has_cached(item_id):
-                # havent found our id, must be new
-                to_fetch.append(item_id)
-
-    if to_fetch:
-        print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
-        arty.fetch(to_fetch)
-        refresh_user(user)
-    else:
-        print(username + ' needed no update')
-
+        print('Using cached version of ' + username)
     return user
 
 

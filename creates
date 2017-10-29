@@ -29,6 +29,7 @@ create table tagger.tagger_article (
 create table tagger.tagger_user (
     id varchar(15) not null,
     opt_out bit not null default 0,
+    last_parsed DateTime,
     primary key (id)
 );
 
