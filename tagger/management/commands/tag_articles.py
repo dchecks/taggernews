@@ -1,6 +1,7 @@
 import glob
 import os
 import numpy as np
+import time
 from django.core.management.base import BaseCommand
 from django.core.wsgi import get_wsgi_application
 from gensim import corpora, models, utils
@@ -107,7 +108,7 @@ def latest_resources():
     return topic_model, dictionary, lr_dictionary
 
 
-def tag():
+def tag(infinite=False):
     topic_model, dictionary, lr_dictionary = latest_resources()
     text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
     print('Loaded resources, created tagger')
@@ -117,7 +118,11 @@ def tag():
         articles = Article.objects.filter(state=0).order_by('-rank')
         if len(articles) == 0:
             print('No more articles to tag')
-            break
+            if infinite:
+                time.sleep(10)
+                print('Sleeping... tagged so far: ' + str(total_count))
+            else:
+                break
         else:
             print('Fetched %s articles to tag' % len(articles))
         ret_list = Parallel(n_jobs=THREAD_COUNT)(delayed(tag_away)(text_tagger, article) for article in articles)
@@ -135,4 +140,4 @@ class Command(BaseCommand):
 
 
 if __name__ == "__main__":
-    tag()
+    tag(True)
