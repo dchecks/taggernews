@@ -2,11 +2,10 @@ import sys
 import os
 
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
 from django.utils import timezone
-from goose import Goose
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
@@ -16,7 +15,7 @@ if __name__ == "__main__":
 from tagger.models import Article, User, Item
 from tagger.management.commands.refresh_top_articles import ArticleFetcher
 
-TOP_ARTICLES_URL = 'https://hacker-news.firebaseio.com/v0/user/'
+USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'
 USER_REFRESH_DELTA = timedelta(days=1)
 
 arty = ArticleFetcher()
@@ -29,9 +28,51 @@ def refresh_user(user):
     user.items = Item.objects.all().filter(submitter=user)
 
 
+class UserTagger:
+    tagged_users = 0
+
+    def __init__(self):
+        pass
+
+    def tag(self, infinite=False):
+        while True:
+            users = User.objects.all().filter(last_parsed=None, opt_out=False)
+            if len(users) == 0:
+                print('No users left to tag')
+                if infinite:
+                    print('Sleeping...')
+                    time.sleep(10)
+                else:
+                    print("Quitting...")
+                    break
+            else:
+                print('Tagging user batch of ' + str(len(users)))
+                for user in users:
+                    username = user.id
+                    user_info = requests.get(USER_URL + username + '.json').json()
+                    to_fetch = []
+                    for item_str in user_info['submitted']:
+                        item_id = int(item_str)
+                        if not user.has_cached(item_id):
+                            # havent found our id in the db, must be new
+                            to_fetch.append(item_id)
+                    if to_fetch:
+                        print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
+                        arty.fetch(to_fetch)
+                        refresh_user(user)
+                    else:
+                        print(username + ' needed no update')
+
+                    user.last_parsed = timezone.now()
+                    user.save()
+                    self.tagged_users += 1
+
+            print('Finished tagging user batch of ' + str(len(users)))
+            print('Total users tagged: ' + str(self.tagged_users))
+
+
 def fetch_user(username):
     print('Fetching user ' + username)
-    to_fetch = []
 
     if username in black_list:
         print('User on blacklist, ' + username)
@@ -40,61 +81,39 @@ def fetch_user(username):
     try:
         user = User.objects.get(id=username)
         threshold = timezone.now() - USER_REFRESH_DELTA
-        if user.last_parsed is None or user.last_parsed < threshold:
-            hn_refresh = True
-        else:
-            hn_refresh = False
+        if user.last_parsed and user.last_parsed < threshold:
+            print('User cache expired, ' + username)
+            user.tagged = False
+        elif user.tagged:
+            print('Using cached version of ' + username)
+            return user
     except User.DoesNotExist:
-        hn_refresh = True
-
-    if hn_refresh:
-        user_info = requests.get(TOP_ARTICLES_URL + username + '.json').json()
+        user_info = requests.get(USER_URL + username + '.json').json()
         if not user_info:
             print('User doesn\'t exist, ' + username)
             return None
-        user, created = User.objects.get_or_create(id=username, opt_out=False)
-        if created:
-            print('Fetching unknown user:', username)
-            to_fetch = user_info['submitted']
-        else:
-            for item_str in user_info['submitted']:
-                item_id = int(item_str)
-                if not user.has_cached(item_id):
-                    # havent found our id, must be new
-                    to_fetch.append(item_id)
-        if to_fetch:
-            print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
-            arty.fetch(to_fetch)
-            refresh_user(user)
-        else:
-            print(username + ' needed no update')
+        print('Creating user, ' + username)
+        user = User(id=username, opt_out=False, tagged=False, last_parsed=None)
 
-        user.last_parsed = timezone.now()
-        user.opt_out = False  # TODO No idea why this isn't saving
-        user.save()
-    else:
-        print('Using cached version of ' + username)
+    user.save()
     return user
 
 
 def tag_user(username):
     """Returns failure code and message or success and tags"""
     user = fetch_user(username)
-    if user:
-        tags = {}
-        for article in user.all_articles():
-            for tag in article.tags.all():
-                if tag.name not in tags:
-                    tags[tag.name] = 1
-                else:
-                    tags[tag.name] += 1
-
+    if user and user.last_parsed is not None:
+        tags = user.get_tags()
         return 200, tags
+    elif not user:
+        return 404, 'User unavailable'
     else:
-        return 404, 'User doesn\'t exist'
+        return 204, 'User not yet parsed, check back soon'
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
             success, result = tag_user(str(arg))
             print(success, result)
+    else:
+        UserTagger().tag(True)

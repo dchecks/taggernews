@@ -33,6 +33,7 @@ class User(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     opt_out = models.BooleanField(default=False)
     last_parsed = models.DateTimeField()
+    tagged = models.BooleanField(default=False)
 
     def has_cached(self, hn_id):
         for article in self.article_set.all():
@@ -42,11 +43,21 @@ class User(models.Model):
             if item.hn_id == hn_id:
                 return True
 
-
-    """Returns all articles this user has interacted with"""
     def all_articles(self):
+        """Returns all articles this user has interacted with"""
         top_parents = map(func_top_parent, self.item_set.all())
         return list(self.article_set.all()) + top_parents
+
+    def get_tags(self):
+        tags = {}
+        for article in self.all_articles():
+            for tag in article.tags.all():
+                if tag.name not in tags:
+                    tags[tag.name] = 1
+                else:
+                    tags[tag.name] += 1
+        return tags
+
 
 class Item(models.Model):
     hn_id = models.IntegerField(primary_key=True)
