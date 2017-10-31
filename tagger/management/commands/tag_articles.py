@@ -4,6 +4,8 @@ import numpy as np
 from django.core.management.base import BaseCommand
 from django.core.wsgi import get_wsgi_application
 from gensim import corpora, models, utils
+from joblib import Parallel
+from joblib import delayed
 from sklearn.externals import joblib
 from whitenoise.django import DjangoWhiteNoise
 
@@ -15,6 +17,7 @@ if __name__ == "__main__":
 from django.conf import settings
 from tagger.models import Article, Tag
 
+THREAD_COUNT = 4
 
 class TextTagger(object):
     """Object which tags articles. Needs topic modeler and """
@@ -60,43 +63,41 @@ class TextTagger(object):
         return cls(topic_modeler, gensim_dict, lr_dict, *args, **kwargs)
 
 
-def tag_away(text_tagger, articles):
-    for i, article in enumerate(articles):
-        try:
-            articletext = article.articletext.text
-            if articletext is None:
-                raise Exception("No prediction_input")
+def tag_away(text_tagger, article):
+    try:
+        articletext = article.articletext.text
+        if articletext is None:
+            raise Exception("No prediction_input")
 
-            # Make tag predictions
-            articletext = articletext.encode('utf-8')
-            predicted_tags = text_tagger.text_to_tags(articletext)
+        # Make tag predictions
+        articletext = articletext.encode('utf-8')
+        predicted_tags = text_tagger.text_to_tags(articletext)
 
-        except Exception as e:
-            print('Failed to tag article %s. Error: %s.' % (article.hn_id, e))
-            article.state = 12
-            article.save()
-            continue
-
-        if len(predicted_tags) == 0:
-            article.state = 11
-            article_tags = []
-        else:
-            # Add tags to db (only matters if there's a previously unseen tag)
-            existing_tags = Tag.objects.filter(name__in=predicted_tags)
-            new_tags = set(predicted_tags) - set([t.name for t in existing_tags])
-            new_tags = Tag.objects.bulk_create([Tag(name=t, lowercase_name=t.lower()) for t in new_tags])
-
-            # Associate tags with article (many-to-many)
-            article_tags = list(existing_tags) + new_tags
-            article_tags = Tag.objects.filter(id__in=[t.id for t in article_tags])
-            article.tags.add(*article_tags)
-
-            article.state = 10
-
+    except Exception as e:
+        print('Failed to tag article %s. Error: %s.' % (article.hn_id, e))
+        article.state = 12
         article.save()
+        return
 
-        print('Tagged article %s (%s of %s)\n%s\n%s' %
-              (article.hn_id, i + 1, articles.count(), article.title, article_tags))
+    if len(predicted_tags) == 0:
+        article.state = 11
+        article_tags = []
+    else:
+        # Add tags to db (only matters if there's a previously unseen tag)
+        existing_tags = Tag.objects.filter(name__in=predicted_tags)
+        new_tags = set(predicted_tags) - set([t.name for t in existing_tags])
+        new_tags = Tag.objects.bulk_create([Tag(name=t, lowercase_name=t.lower()) for t in new_tags])
+
+        # Associate tags with article (many-to-many)
+        article_tags = list(existing_tags) + new_tags
+        article_tags = Tag.objects.filter(id__in=[t.id for t in article_tags])
+        article.tags.add(*article_tags)
+
+        article.state = 10
+
+    article.save()
+    print('Tagged article %s \n%s\n%s' % (article.hn_id, article.title, article_tags))
+    return 1
 
 
 def latest_resources():
@@ -110,8 +111,20 @@ def tag():
     topic_model, dictionary, lr_dictionary = latest_resources()
     text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
     print('Loaded resources, created tagger')
-    articles = Article.objects.filter(state=0).order_by('-rank')
-    tag_away(text_tagger, articles)
+
+    total_count = 0
+    while True:
+        articles = Article.objects.filter(state=0).order_by('-rank')
+        if len(articles) == 0:
+            print('No more articles to tag')
+            break
+        else:
+            print('Fetched %s articles to tag' % len(articles))
+        ret_list = Parallel(n_jobs=THREAD_COUNT)(delayed(tag_away)(text_tagger, article) for article in articles)
+        total_count += len(ret_list)
+        print('Batch completed, checking for more...')
+
+    print('Finished after tagging %s articles' % total_count)
 
 
 class Command(BaseCommand):
