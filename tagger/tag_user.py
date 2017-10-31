@@ -70,26 +70,31 @@ def fetch_user(username):
             print(username + ' needed no update')
 
         user.last_parsed = timezone.now()
+        user.opt_out = False  # TODO No idea why this isn't saving
         user.save()
     else:
         print('Using cached version of ' + username)
     return user
 
 
-def tag_user(articles):
-    tags = {}
-    for article in articles:
-        for tag in article.tags.all():
-            if not tag in tags:
-                tags[tag] = 1
-            else:
-                tags[tag] += 1
+def tag_user(username):
+    """Returns failure code and message or success and tags"""
+    user = fetch_user(username)
+    if user:
+        tags = {}
+        for article in user.all_articles():
+            for tag in article.tags.all():
+                if tag.name not in tags:
+                    tags[tag.name] = 1
+                else:
+                    tags[tag.name] += 1
 
-    return tags
+        return 200, tags
+    else:
+        return 404, 'User doesn\'t exist'
 
-user = fetch_user('pg')
-if user:
-    all_articles = user.all_articles()
-    print(tag_user(all_articles))
-else:
-    print('User doesn\'t exist')
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            success, result = tag_user(str(arg))
+            print(success, result)

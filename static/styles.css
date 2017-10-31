@@ -170,3 +170,11 @@ pre { max-width: 900px; }
   .comment { max-width: 1130px; overflow: auto }
   pre { max-width: 840px; }
 }
+
+
+.tooltip {
+    display: block;
+    position: absolute;
+    background-color: rgb(130, 150, 200);
+    padding: 5px;
+}
