@@ -18,7 +18,7 @@ ITEM_URL = 'https://hacker-news.firebaseio.com/v0/item/%s.json'
 THROTTLE = 5
 THREAD_COUNT = 1  # Issues with this being >1 on OSX
 
-URL_EXCLUSIONS = ["https://arxiv"]
+URL_EXCLUSIONS = ["https://arxiv", "http://arxiv"]
 
 emoji_regex = re.compile(
     u"(\ud83d[\ude00-\ude4f])|"  # emoticons
@@ -210,6 +210,13 @@ class Command(BaseCommand):
                 arty.rank = i
                 arty.save()
                 print(str(i) + ': ' + str(article_id))
+
+                submitter = arty.submitter
+                # if user on front page isn't tagged yet prioritise them
+                if not submitter.tagged:
+                    submitter.priority = i
+                    submitter.save()
+
             except Article.DoesNotExist:
                 print('Skipping ' + str(i) + ': ' + str(article_id))
 

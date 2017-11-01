@@ -33,6 +33,7 @@ class User(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
     opt_out = models.BooleanField(default=False)
     last_parsed = models.DateTimeField()
+    priority = models.IntegerField()
     tagged = models.BooleanField(default=False)
 
     def has_cached(self, hn_id):

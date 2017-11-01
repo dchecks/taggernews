@@ -29,6 +29,7 @@ def refresh_user(user):
 
 
 class UserTagger:
+    BATCH_SIZE = 50
     tagged_users = 0
 
     def __init__(self):
@@ -36,7 +37,9 @@ class UserTagger:
 
     def tag(self, infinite=False):
         while True:
-            users = User.objects.all().filter(last_parsed=None, opt_out=False)
+            users = User.objects.all().filter(opt_out=False).exclude(priority=None).order_by('priority')[:self.BATCH_SIZE]
+            remaining = self.BATCH_SIZE - len(users)
+            users = list(users) + list(User.objects.all().filter(opt_out=False, priority=None)[:remaining])
             if len(users) == 0:
                 print('No users left to tag')
                 if infinite:
@@ -64,6 +67,7 @@ class UserTagger:
                         print(username + ' needed no update')
 
                     user.last_parsed = timezone.now()
+                    user.priority = None
                     user.save()
                     self.tagged_users += 1
 
