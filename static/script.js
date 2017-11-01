@@ -9,10 +9,14 @@ function showTooltip(elementId){
     $.getJSON("/user?id=" + user, function(data) {
         var outstr = "";
         for(key in data) {
-            outstr += data[key] + ": " + key + "<br />";
+            outstr += "<span class='tag'>" + key + "</span> " + data[key] + "<br />";
         }
 
         var tooltip = $("<div id='tooltip' class='tooltip'>" + outstr+ "</div>");
+        tooltip.appendTo($("#" + elementId));
+    })
+    .fail(function(data){
+        var tooltip = $("<div id='tooltip' class='tooltip'>" + data['message'] + "</div>");
         tooltip.appendTo($("#" + elementId));
     });
 }

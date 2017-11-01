@@ -13,7 +13,7 @@ if __name__ == "__main__":
     application = DjangoWhiteNoise(application)
 # Needs to be imported after django
 from tagger.models import Article, User, Item
-from tagger.management.commands.refresh_top_articles import ArticleFetcher
+from tagger.management.commands.refresh_top import ArticleFetcher
 
 USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'
 USER_REFRESH_DELTA = timedelta(days=1)
@@ -110,9 +110,9 @@ def tag_user(username):
         tags = user.get_tags()
         return 200, tags
     elif not user:
-        return 404, 'User unavailable'
+        return 404, {'message': 'User unavailable'}
     else:
-        return 204, 'User not yet parsed, check back soon'
+        return 204, {'message': 'User not yet parsed, check back soon'}
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

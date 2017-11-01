@@ -64,10 +64,5 @@ def all_tags(request):
 
 def user(request):
     username = request.GET.get('id', '')
-    success, result = tag_user(username)
-    if success == 200:
-        return JsonResponse(result)
-    else:
-        response = HttpResponse(result)
-        response.status_code = success
-        return response
+    code, result = tag_user(username)
+    return JsonResponse(result, status=code)

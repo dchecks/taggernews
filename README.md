@@ -51,8 +51,8 @@ For the admin interface:
 ```
 open http://localhost:8000/admin
 ```
-###Data Gathering and Analysis
 
+###Data Gathering and Analysis
 ##### Create a model
 Now to create an LDA model (Latent Dirichlet Allocation)
 In analyze_hn run:

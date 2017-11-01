@@ -21,7 +21,7 @@ if __name__ == "__main__":
     application = DjangoWhiteNoise(application)
 # Needs to be imported after django
 from tagger.models import Article
-from tagger.management.commands.refresh_top_articles import ArticleFetcher
+from tagger.management.commands.refresh_top import ArticleFetcher
 
 RANDOM_FOREST_NAME = "./ml_models/predictions/randomforest_model"
 LOGISTIC_MODEL_NAME = "./ml_models/predictions/logistic_model"
