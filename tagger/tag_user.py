@@ -37,10 +37,18 @@ class UserTagger:
 
     def tag(self, infinite=False):
         while True:
-            users = User.objects.all().filter(opt_out=False).exclude(priority=None).order_by('priority')[:self.BATCH_SIZE]
-            remaining = self.BATCH_SIZE - len(users)
-            users = list(users) + list(User.objects.all().filter(opt_out=False, priority=None)[:remaining])
-            if len(users) == 0:
+            user = User.objects.exclude(opt_out=True)\
+                                .exclude(tagged=True)\
+                                .exclude(tagging=True)\
+                                .exclude(priority__isnull=True)\
+                                .order_by('priority')\
+                                .first()
+            # , tagged=True, tagging=True).exclude(priority__isnull=True)
+            if user is None:
+                print('here')
+                user = User.objects.filter(opt_out=False, priority=None, tagged=False, tagging=False).first()
+                user.priority = 0
+            if user is None:
                 print('No users left to tag')
                 if infinite:
                     print('Sleeping...')
@@ -49,29 +57,33 @@ class UserTagger:
                     print("Quitting...")
                     break
             else:
-                print('Tagging user batch of ' + str(len(users)))
-                for user in users:
-                    username = user.id
-                    user_info = requests.get(USER_URL + username + '.json').json()
-                    to_fetch = []
-                    for item_str in user_info['submitted']:
-                        item_id = int(item_str)
-                        if not user.has_cached(item_id):
-                            # havent found our id in the db, must be new
-                            to_fetch.append(item_id)
-                    if to_fetch:
-                        print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
-                        arty.fetch(to_fetch)
-                        refresh_user(user)
-                    else:
-                        print(username + ' needed no update')
+                print('Tagging ' + str(user))
+                user.tagging = True
+                user.save()
 
-                    user.last_parsed = timezone.now()
-                    user.priority = None
-                    user.save()
-                    self.tagged_users += 1
+                username = user.id
+                user_info = requests.get(USER_URL + username + '.json').json()
+                to_fetch = []
+                for item_str in user_info['submitted']:
+                    item_id = int(item_str)
+                    if not user.has_cached(item_id):
+                        # havent found our id in the db, must be new
+                        to_fetch.append(item_id)
+                if to_fetch:
+                    print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
+                    arty.fetch(to_fetch)
+                    refresh_user(user)
+                else:
+                    print(username + ' needed no update')
 
-            print('Finished tagging user batch of ' + str(len(users)))
+                user.last_parsed = timezone.now()
+                user.priority = None
+                user.tagging = False
+                user.tagged = True
+                user.save()
+                self.tagged_users += 1
+                print('Finished tagging user ' + user.id)
+
             print('Total users tagged: ' + str(self.tagged_users))
 
 
@@ -113,6 +125,7 @@ def tag_user(username):
         return 404, {'message': 'User unavailable'}
     else:
         return 204, {'message': 'User not yet parsed, check back soon'}
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

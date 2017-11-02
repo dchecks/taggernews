@@ -11,7 +11,7 @@ from sklearn.externals import joblib
 from whitenoise.django import DjangoWhiteNoise
 
 if __name__ == "__main__":
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tagger.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
     application = get_wsgi_application()
     application = DjangoWhiteNoise(application)
 
@@ -136,7 +136,7 @@ class Command(BaseCommand):
     help = 'tags articles'
 
     def handle(self, *args, **options):
-        tag()
+        tag(True)
 
 
 if __name__ == "__main__":

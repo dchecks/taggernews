@@ -31,10 +31,19 @@ def func_top_parent(item):
 
 class User(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
-    opt_out = models.BooleanField(default=False)
+    opt_out = models.BooleanField(default=0)
     last_parsed = models.DateTimeField()
     priority = models.IntegerField()
     tagged = models.BooleanField(default=False)
+    tagging = models.BooleanField(default=False)
+
+    def __str__(self):
+        return 'User ' + self.id \
+               + ",\n opt_out=" + str(self.opt_out)\
+               + ",\n last_parsed=" + str(self.last_parsed)\
+               + ",\n priority=" + str(self.priority)\
+               + ",\n tagged=" + str(self.tagged)\
+               + ",\n tagging=" + str(self.tagging)
 
     def has_cached(self, hn_id):
         for article in self.article_set.all():

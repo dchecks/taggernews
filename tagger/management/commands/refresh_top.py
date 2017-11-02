@@ -117,7 +117,9 @@ def hn_fetch(article_id):
             print('Recursing to get', parent_id)
             parent_item = fetch_me(parent_id)
             # When an article is returned, we know we've hit the top
-            if isinstance(parent_item, Article):
+            if not parent_item or not parent_item.top_parent:
+                top_parent = None
+            elif isinstance(parent_item, Article):
                 print('Found top parent', parent_id)
                 top_parent = parent_item
                 parent_item = None
