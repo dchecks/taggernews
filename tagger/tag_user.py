@@ -124,6 +124,8 @@ def tag_user(username):
     elif not user:
         return 404, {'message': 'User unavailable'}
     else:
+        user.priority = 1
+        user.save()
         return 204, {'message': 'User not yet parsed, check back soon'}
 
 

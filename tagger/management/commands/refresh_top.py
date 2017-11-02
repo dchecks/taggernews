@@ -117,12 +117,12 @@ def hn_fetch(article_id):
             print('Recursing to get', parent_id)
             parent_item = fetch_me(parent_id)
             # When an article is returned, we know we've hit the top
-            if not parent_item or not parent_item.top_parent:
-                top_parent = None
-            elif isinstance(parent_item, Article):
+            if isinstance(parent_item, Article):
                 print('Found top parent', parent_id)
                 top_parent = parent_item
                 parent_item = None
+            elif not parent_item or not parent_item.top_parent:
+                top_parent = None
             else:
                 # the top_parent is at least 1 grandparent away, or not found
                 top_parent = parent_item.top_parent
@@ -136,7 +136,7 @@ def hn_fetch(article_id):
         )
     else:
         url = article_info.get('url')
-        if (not url) or url[:13] in URL_EXCLUSIONS:     # hack for goose as it doesnt like some unicode characters,
+        if (not url) or url.startswith(tuple(URL_EXCLUSIONS)):     # hack for goose as it doesnt like some unicode characters,
             print("No url for article ", article_id)
             state = 2
         else:
