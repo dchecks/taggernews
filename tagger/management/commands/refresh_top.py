@@ -127,13 +127,15 @@ def hn_fetch(article_id):
                 # the top_parent is at least 1 grandparent away, or not found
                 top_parent = parent_item.top_parent
 
-        return Item(
+        item = Item(
             hn_id=article_id,
             submitter=submitter,
             type=article_info.get('type'),
             parent=parent_item,
             top_parent=top_parent
         )
+        item.save()
+        return item
     else:
         url = article_info.get('url')
         if (not url) or url.startswith(tuple(URL_EXCLUSIONS)):     # hack for goose as it doesnt like some unicode characters,
@@ -161,7 +163,6 @@ def fetch_me(hn_id):
     if not item:
         # load the meta from HN
         item = hn_fetch(hn_id)
-        item.save()
 
     if not isinstance(item, Article):
         return item
