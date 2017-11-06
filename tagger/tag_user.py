@@ -43,7 +43,6 @@ class UserTagger:
                                 .exclude(priority__isnull=True)\
                                 .order_by('priority')\
                                 .first()
-            # , tagged=True, tagging=True).exclude(priority__isnull=True)
             if user is None:
                 print('here')
                 user = User.objects.filter(opt_out=False, priority=None, tagged=False, tagging=False).first()
@@ -70,6 +69,7 @@ class UserTagger:
                         # havent found our id in the db, must be new
                         to_fetch.append(item_id)
                 if to_fetch:
+                    to_fetch = to_fetch[:100]  # Limit fetching to speed things up
                     print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
                     arty.fetch(to_fetch)
                     refresh_user(user)
@@ -119,6 +119,7 @@ def tag_user(username):
     """Returns failure code and message or success and tags"""
     user = fetch_user(username)
     if user and user.last_parsed is not None:
+        print('Tagging...')
         tags = user.get_tags()
         return 200, tags
     elif not user:
@@ -126,7 +127,7 @@ def tag_user(username):
     else:
         user.priority = 1
         user.save()
-        return 204, {'message': 'User not yet parsed, check back soon'}
+        return 200, {'message': 'User not yet parsed, check back soon'}
 
 
 if __name__ == "__main__":

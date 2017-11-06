@@ -4,6 +4,10 @@ create user 'tagger_client'@'localhost' identified by 'probablyNotTheRealPasswor
 grant insert, select, update on tagger.* to 'tagger_client'@'localhost';
 FLUSH PRIVILEGES;
 
+create user 'tagger_client'@'10.0.0.%' identified by 'probablyNotTheRealPassword';
+grant insert, select, update on tagger.* to 'tagger_client'@'10.0.0.%';
+FLUSH PRIVILEGES;
+
 create table tagger.tagger_articleText (
     article_id integer not null,
     parsed DateTime not null,
@@ -26,6 +30,8 @@ create table tagger.tagger_article (
     primary key (hn_id)
 );
 
+alter table tagger_article add index submitter (submitter);
+
 create table tagger.tagger_user (
     id varchar(15) not null,
     opt_out boolean not null default 0,
@@ -33,6 +39,7 @@ create table tagger.tagger_user (
     tagging boolean not null default 0,
     last_parsed DateTime,
     priority int,
+    total_items int,
     primary key (id)
 );
 
@@ -42,8 +49,11 @@ create table tagger.tagger_item (
     type varchar(10) not null,
     parent int,
     top_parent int,
+    imported boolean default False
     primary key (hn_id)
 );
+
+alter table tagger_item add index submitter (submitter);
 
 create table tagger.tagger_tag (
     id int not null auto_increment,

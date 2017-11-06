@@ -18,7 +18,7 @@ if __name__ == "__main__":
 from django.conf import settings
 from tagger.models import Article, Tag
 
-THREAD_COUNT = 4
+THREAD_COUNT = 1  # Annoyingly, this doesn't parallel on osx either
 
 class TextTagger(object):
     """Object which tags articles. Needs topic modeler and """
@@ -66,6 +66,12 @@ class TextTagger(object):
 
 def tag_away(text_tagger, article):
     try:
+        # Mark for tagging
+        if article.state != 0:
+            return 0
+        article.state = 13
+        article.save()
+
         articletext = article.articletext.text
         if articletext is None:
             raise Exception("No prediction_input")
@@ -115,7 +121,7 @@ def tag(infinite=False):
 
     total_count = 0
     while True:
-        articles = Article.objects.filter(state=0).order_by('-rank')
+        articles = Article.objects.filter(state=0).order_by('-rank')[:THREAD_COUNT]
         if len(articles) == 0:
             print('No more articles to tag')
             if infinite:

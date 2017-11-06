@@ -35,13 +35,14 @@ class ArticleFetcher:
         pass
 
     # Only want to update_rank when getting from the front 'ranked' page
-    def fetch(self, hn_ids, update_rank=False):
+    def fetch(self, hn_ids):
         """
-            Given a list of hn ids, collect them in parallel
+            Given a list of hn ids, collect them
             if the ids correspond to articles their text will also be fetched
-            @:param update_rank to be used with
-            """
-        ret_list = Parallel(n_jobs=THREAD_COUNT)(delayed(fetch_me)(aid) for aid in hn_ids)
+        """
+        ret_list = []
+        for aid in hn_ids:
+            ret_list.append(fetch_me(aid))
 
         return ret_list
 
@@ -93,7 +94,11 @@ def db_fetch(hn_id):
 def hn_fetch(article_id):
     """ Fetch the meta data from the hn api"""
     print("Fetching from hn " + str(article_id))
-    article_info = requests.get(ITEM_URL % article_id).json()
+    try:
+        article_info = requests.get(ITEM_URL % article_id).json()
+    except Exception as e:
+        print('Failed to get from hn api', e)
+        article_info = None
 
     if article_info is None:
         print("HN id unknown ", article_id)
@@ -109,7 +114,7 @@ def hn_fetch(article_id):
     if article_info.get('type') != 'story':
         # Recurse to get the top_parent
         parent_id = article_info.get('parent')
-        if parent_id == None:
+        if parent_id is None:
             print('Failed to find the top parent for', parent_id)
             top_parent = None
             parent_item = None
@@ -121,7 +126,9 @@ def hn_fetch(article_id):
                 print('Found top parent', parent_id)
                 top_parent = parent_item
                 parent_item = None
-            elif not parent_item or not parent_item.top_parent:
+            elif parent_item is None:
+                top_parent = None
+            elif parent_item.top_parent is None:
                 top_parent = None
             else:
                 # the top_parent is at least 1 grandparent away, or not found
@@ -134,8 +141,6 @@ def hn_fetch(article_id):
             parent=parent_item,
             top_parent=top_parent
         )
-        item.save()
-        return item
     else:
         url = article_info.get('url')
         if (not url) or url.startswith(tuple(URL_EXCLUSIONS)):     # hack for goose as it doesnt like some unicode characters,
@@ -143,7 +148,7 @@ def hn_fetch(article_id):
             state = 2
         else:
             state = 3
-        return Article.objects.create(
+        item = Article.objects.create(
             hn_id=article_id,
             state=state,
             parsed=timezone.now(),
@@ -154,6 +159,9 @@ def hn_fetch(article_id):
             submitter=submitter,
             timestamp=article_info.get('time'),
         )
+
+    item.save()
+    return item
 
 
 def fetch_me(hn_id):
