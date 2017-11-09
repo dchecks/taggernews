@@ -119,20 +119,24 @@ def hn_fetch(article_id):
             top_parent = None
             parent_item = None
         else:
-            print('Recursing to get', parent_id)
             parent_item = fetch_me(parent_id)
             # When an article is returned, we know we've hit the top
             if isinstance(parent_item, Article):
                 print('Found top parent', parent_id)
                 top_parent = parent_item
                 parent_item = None
-            elif parent_item is None:
-                top_parent = None
-            elif parent_item.top_parent is None:
-                top_parent = None
             else:
-                # the top_parent is at least 1 grandparent away, or not found
-                top_parent = parent_item.top_parent
+                try:
+                    if parent_item is None:
+                        top_parent = None
+                    elif parent_item.top_parent is None:
+                        top_parent = None
+                    else:
+                        # the top_parent is at least 1 grandparent away, or not found
+                        top_parent = parent_item.top_parent
+                except Article.DoesNotExist as e:
+                    top_parent = None
+
 
         item = Item(
             hn_id=article_id,

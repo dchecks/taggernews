@@ -105,21 +105,49 @@ class Importer:
                             print('last cmd: ' + cmd)
                             self.print_stats()
 
-
-
     def import_articles(self):
-        with open('../resources/HNStoriesAll.json') as data_file:
-            for outerItem in ijson.items(data_file, "item"):
-                for hit in outerItem['hits']:
-                    hn_id = hit['objectID']
-                    state = 3
-                    parsed = timezone.now()
-                    title = hit['title']
-                    article_url = hit['url']
-                    score = hit['points']
-                    number_of_comments = hit['num_comments']
-                    submitter = hit['author']
-                    timestamp = hit['created_at_i']
+        with open('../resources/HNStoriesAll.json', buffering=4096000) as data_file:
+            with connection.cursor() as cursor:
+                state = 3
+
+                for outerItem in ijson.items(data_file, "item"):
+                    for hit in outerItem['hits']:
+                        hn_id = hit['objectID']
+
+                        if Article.objects.filter(hn_id=hn_id).exists():
+                            self.skip_count += 1
+                            continue
+
+                        title = None
+                        url = None
+                        score = None
+                        number_of_comments = None
+                        submitter = None
+                        timestamp = None
+
+                        try:
+                            title = hit['title']
+                            url = hit['url']
+                            score = hit['points']
+                            number_of_comments = hit['num_comments']
+                            submitter = hit['author']
+                            timestamp = hit['created_at_i']
+
+                            user, created = User.objects.get_or_create(id=hit['author'])
+                            if created:
+                                self.user_count += 1
+                                user.save()
+
+                            cmd = "INSERT INTO tagger_article (hn_id, title, state, article_url, score, number_of_comments, submitter, timestamp) " \
+                                  "VALUES(%s, %s, %s, %s, %s, %s, %s, %s)"
+                            cursor.execute(cmd, (hn_id, title, str(state), url, score, number_of_comments, submitter, timestamp))
+                            self.create_count += 1
+                        except Exception as e:
+                            print('Exception, hn_id: ' + str(hn_id))
+                            print(e)
+                            print('last cmd: ' + cmd)
+                            self.print_stats()
+
 
     def scan(self, file, hn_id):
         hn_id = str(hn_id)
@@ -139,10 +167,10 @@ class Importer:
                     print('Progress: ' + str(counter))
 
 
-#Importer().import_articles()
-with open('resources/HNCommentsAll.json', buffering=4096000) as data_file:
-    Importer().import_items(5845000)
-    #Importer().scan(data_file, 7076238)
+Importer().import_articles()
+# with open('resources/HNCommentsAll.json', buffering=4096000) as data_file:
+#     Importer().import_items(5845000)
+#     #Importer().scan(data_file, 7076238)
 # Importer().scan(data_file, 7076239)
 
 

@@ -73,11 +73,12 @@ class User(models.Model):
 # db_constraint=False added for importer
 class Item(models.Model):
     hn_id = models.IntegerField(primary_key=True)
-    submitter = models.ForeignKey("User", db_column='submitter', db_constraint=False) #on_delete=models.PROTECT,
+    submitter = models.ForeignKey("User", db_column='submitter', on_delete=models.PROTECT)
     type = models.CharField(max_length=10)
-    parent = models.ForeignKey("Item", db_column='parent', db_constraint=False) #on_delete=models.PROTECT,
-    top_parent = models.ForeignKey("Article", db_column='top_parent', db_constraint=False) #on_delete=models.PROTECT,
+    parent = models.ForeignKey("Item", db_column='parent', on_delete=models.PROTECT)
+    top_parent = models.ForeignKey("Article", db_column='top_parent', on_delete=models.PROTECT)
     imported = models.BooleanField(default=False)
+
 
 class Article(models.Model):
     hn_id = models.IntegerField(primary_key=True)

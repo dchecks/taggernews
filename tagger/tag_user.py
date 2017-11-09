@@ -41,10 +41,10 @@ class UserTagger:
                                 .exclude(tagged=True)\
                                 .exclude(tagging=True)\
                                 .exclude(priority__isnull=True)\
+                                .exclude(last_parsed__isnull=False)\
                                 .order_by('priority')\
                                 .first()
             if user is None:
-                print('here')
                 user = User.objects.filter(opt_out=False, priority=None, tagged=False, tagging=False).first()
                 user.priority = 0
             if user is None:
