@@ -2,7 +2,7 @@ import sys
 import os
 
 import requests
-from datetime import datetime, timedelta, time
+from datetime import timedelta, time
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
 from django.utils import timezone
@@ -13,10 +13,11 @@ if __name__ == "__main__":
     application = DjangoWhiteNoise(application)
 # Needs to be imported after django
 from tagger.models import Article, User, Item
-from tagger.management.commands.refresh_top import ArticleFetcher
+from tagger.article_fetcher import ArticleFetcher
+from tagger.tag_article import tag_list
 
 USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'
-USER_REFRESH_DELTA = timedelta(days=1)
+USER_REFRESH_DELTA = timedelta(days=100)
 
 arty = ArticleFetcher()
 black_list = list(User.objects.filter(opt_out=True).values_list('id', flat=True))
@@ -35,7 +36,37 @@ class UserTagger:
     def __init__(self):
         pass
 
-    def tag(self, infinite=False):
+    def tag(self, user):
+        print('Tagging ' + str(user))
+        user.tagging = True
+        user.save()
+
+        username = user.id
+        user_info = requests.get(USER_URL + username + '.json').json()
+        to_fetch = []
+        for item_str in user_info['submitted']:
+            user.total_items += 1
+            item_id = int(item_str)
+            if not user.has_cached(item_id):
+                # havent found our id in the db, must be new
+                to_fetch.append(item_id)
+        if to_fetch:
+            to_fetch = to_fetch[:100]  # Limit fetching to speed things up
+            print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
+            arty.fetch(to_fetch)
+            refresh_user(user)
+        else:
+            print(username + ' needed no update')
+
+        user.last_parsed = timezone.now()
+        user.priority = None
+        user.tagging = False
+        user.tagged = True
+        user.save()
+        self.tagged_users += 1
+        print('Finished tagging user ' + user.id)
+
+    def tag_job(self, infinite=False):
         while True:
             user = User.objects.exclude(opt_out=True)\
                                 .exclude(tagged=True)\
@@ -56,33 +87,7 @@ class UserTagger:
                     print("Quitting...")
                     break
             else:
-                print('Tagging ' + str(user))
-                user.tagging = True
-                user.save()
-
-                username = user.id
-                user_info = requests.get(USER_URL + username + '.json').json()
-                to_fetch = []
-                for item_str in user_info['submitted']:
-                    item_id = int(item_str)
-                    if not user.has_cached(item_id):
-                        # havent found our id in the db, must be new
-                        to_fetch.append(item_id)
-                if to_fetch:
-                    to_fetch = to_fetch[:100]  # Limit fetching to speed things up
-                    print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
-                    arty.fetch(to_fetch)
-                    refresh_user(user)
-                else:
-                    print(username + ' needed no update')
-
-                user.last_parsed = timezone.now()
-                user.priority = None
-                user.tagging = False
-                user.tagged = True
-                user.save()
-                self.tagged_users += 1
-                print('Finished tagging user ' + user.id)
+                self.tag(user)
 
             print('Total users tagged: ' + str(self.tagged_users))
 
@@ -115,7 +120,7 @@ def fetch_user(username):
     return user
 
 
-def tag_user(username):
+def tag_user(username, force_tagging=False):
     """Returns failure code and message or success and tags"""
     user = fetch_user(username)
     if user and user.last_parsed is not None:
@@ -124,6 +129,14 @@ def tag_user(username):
         return 200, tags
     elif not user:
         return 404, {'message': 'User unavailable'}
+    elif force_tagging:
+        print('Forced tagging...may be some time')
+        UserTagger().tag(user)
+        articles = user.all_articles()
+        tag_list(articles)
+        user.refresh_from_db()
+        tags = user.get_tags()
+        return 200, tags
     else:
         user.priority = 1
         user.save()
@@ -133,7 +146,7 @@ def tag_user(username):
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
-            success, result = tag_user(str(arg))
+            success, result = tag_user(str(arg), True)
             print(success, result)
     else:
-        UserTagger().tag(True)
+        UserTagger().tag_job(True)

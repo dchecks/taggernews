@@ -2,11 +2,9 @@ import glob
 import os
 import numpy as np
 import time
-from django.core.management.base import BaseCommand
+
 from django.core.wsgi import get_wsgi_application
 from gensim import corpora, models, utils
-from joblib import Parallel
-from joblib import delayed
 from sklearn.externals import joblib
 from whitenoise.django import DjangoWhiteNoise
 
@@ -14,11 +12,8 @@ if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
     application = get_wsgi_application()
     application = DjangoWhiteNoise(application)
-
-from django.conf import settings
+from tagger import settings
 from tagger.models import Article, Tag
-
-THREAD_COUNT = 1  # Annoyingly, this doesn't parallel on osx either
 
 class TextTagger(object):
     """Object which tags articles. Needs topic modeler and """
@@ -74,7 +69,10 @@ def tag_away(text_tagger, article):
 
         articletext = article.articletext.text
         if articletext is None:
-            raise Exception("No prediction_input")
+            print('No prediction_input for ' + article.hn_id + ', state: ' + article.state)
+            article.state = 4
+            article.save()
+            return 0
 
         # Make tag predictions
         articletext = articletext.encode('utf-8')
@@ -114,6 +112,17 @@ def latest_resources():
     return topic_model, dictionary, lr_dictionary
 
 
+def tag_list(articles):
+    topic_model, dictionary, lr_dictionary = latest_resources()
+    text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
+    print('Loaded resources, created tagger')
+    total_count = 0
+    for article in articles:
+        tag_away(text_tagger, article)
+        total_count += 1
+    print('Finished after tagging %s articles' % total_count)
+
+
 def tag(infinite=False):
     topic_model, dictionary, lr_dictionary = latest_resources()
     text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
@@ -121,8 +130,8 @@ def tag(infinite=False):
 
     total_count = 0
     while True:
-        articles = Article.objects.filter(state=0).order_by('-rank')[:THREAD_COUNT]
-        if len(articles) == 0:
+        article = Article.objects.filter(state=0).filter(tagged=False).order_by('-rank').first()
+        if not article:
             print('No more articles to tag')
             if infinite:
                 time.sleep(10)
@@ -130,20 +139,11 @@ def tag(infinite=False):
             else:
                 break
         else:
-            print('Fetched %s articles to tag' % len(articles))
-        ret_list = Parallel(n_jobs=THREAD_COUNT)(delayed(tag_away)(text_tagger, article) for article in articles)
-        total_count += len(ret_list)
-        print('Batch completed, checking for more...')
+            tag_away(text_tagger, article)
+            total_count += 1
+            print('Completed, checking for more...')
 
     print('Finished after tagging %s articles' % total_count)
-
-
-class Command(BaseCommand):
-    help = 'tags articles'
-
-    def handle(self, *args, **options):
-        tag(True)
-
 
 if __name__ == "__main__":
     tag(True)

@@ -1,14 +1,8 @@
-import json
 import os
-from operator import sub
-
 import time
-from django.utils import timezone
+import ijson
 
 from django.db import connection
-from django.db.transaction import atomic
-import ijson
-from ijson import parse
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
 
@@ -50,63 +44,62 @@ class Importer:
         self.d_user = self.user_count
         self.d_error = self.error_count
 
-    def import_items(self, offset=0):
-        with open('resources/HNCommentsAll.json') as data_file:
-            with connection.cursor() as cursor:
-                for outerItem in ijson.items(data_file, "item"):
-                    for hit in outerItem['hits']:
-                        if (self.create_count + self.skip_count) % 1000 == 0:
-                            self.print_stats()
+    def import_items(self, data_file, offset=0):
+        with connection.cursor() as cursor:
+            for outerItem in ijson.items(data_file, "item"):
+                for hit in outerItem['hits']:
+                    if (self.create_count + self.skip_count) % 1000 == 0:
+                        self.print_stats()
 
-                        if self.skip_count < offset:
+                    if self.skip_count < offset:
+                        self.skip_count += 1
+                        continue
+
+                    cmd = ""
+                    hn_id = None
+                    submitter = None
+                    parent = None
+                    top_parent = None
+
+                    try:
+                        hn_id = hit['objectID']
+                        if Item.objects.filter(hn_id=hn_id).exists():
                             self.skip_count += 1
                             continue
 
-                        cmd = ""
-                        hn_id = None
-                        submitter = None
-                        parent = None
-                        top_parent = None
+                        if 'author' in hit:
+                            submitter = hit['author']
+                        elif 'deleted' in hit:
+                            submitter = 'deleted'
 
-                        try:
-                            hn_id = hit['objectID']
-                            if Item.objects.filter(hn_id=hn_id).exists():
-                                self.skip_count += 1
-                                continue
+                        if 'parent' in hit:
+                            parent = hit['parent_id']
+                        else:
+                            parent = 'NULL'
 
-                            if 'author' in hit:
-                                submitter = hit['author']
-                            elif 'deleted' in hit:
-                                submitter = 'deleted'
+                        if 'story_id' in hit:
+                            top_parent = hit['story_id']
+                        else:
+                            top_parent = 'NULL'
 
-                            if 'parent' in hit:
-                                parent = hit['parent_id']
-                            else:
-                                parent = 'NULL'
+                        # Create the user the old fashioned way if necessary
+                        user, created = User.objects.get_or_create(id=hit['author'])
+                        if created:
+                            self.user_count += 1
+                            user.save()
 
-                            if 'story_id' in hit:
-                                top_parent = hit['story_id']
-                            else:
-                                top_parent = 'NULL'
+                        cmd = "INSERT INTO tagger_item (hn_id, type, submitter, parent, top_parent, imported) " \
+                            "VALUES(%s, 'comment', '%s', %s, %s, 1)" % (hn_id, submitter, parent, top_parent)
+                        cursor.execute(cmd)
+                        self.create_count += 1
+                    except Exception as e:
+                        print('Exception, hn_id: ' + str(hn_id))
+                        print(e)
+                        print('last cmd: ' + cmd)
+                        self.print_stats()
 
-                            # Create the user the old fashioned way if necessary
-                            user, created = User.objects.get_or_create(id=hit['author'])
-                            if created:
-                                self.user_count += 1
-                                user.save()
+    def import_articles(self, data_file):
 
-                            cmd = "INSERT INTO tagger_item (hn_id, type, submitter, parent, top_parent, imported) " \
-                                "VALUES(%s, 'comment', '%s', %s, %s, 1)" % (hn_id, submitter, parent, top_parent)
-                            cursor.execute(cmd)
-                            self.create_count += 1
-                        except Exception as e:
-                            print('Exception, hn_id: ' + str(hn_id))
-                            print(e)
-                            print('last cmd: ' + cmd)
-                            self.print_stats()
-
-    def import_articles(self):
-        with open('../resources/HNStoriesAll.json', buffering=4096000) as data_file:
             with connection.cursor() as cursor:
                 state = 3
 
@@ -145,11 +138,12 @@ class Importer:
                         except Exception as e:
                             print('Exception, hn_id: ' + str(hn_id))
                             print(e)
-                            print('last cmd: ' + cmd)
+                            if cmd:
+                                print('last cmd: ' + cmd)
                             self.print_stats()
 
-
     def scan(self, file, hn_id):
+        """Helpful for debugging, fetches and prints the given id"""
         hn_id = str(hn_id)
         counter = 0
         print_count = 0
@@ -167,10 +161,9 @@ class Importer:
                     print('Progress: ' + str(counter))
 
 
-Importer().import_articles()
-# with open('resources/HNCommentsAll.json', buffering=4096000) as data_file:
-#     Importer().import_items(5845000)
-#     #Importer().scan(data_file, 7076238)
-# Importer().scan(data_file, 7076239)
+with open('../resources/HNStoriesAll.json', buffering=4096000) as data_file:
+    Importer().import_articles(data_file)
+with open('resources/HNCommentsAll.json', buffering=4096000) as data_file:
+    Importer().import_items(data_file)
 
 

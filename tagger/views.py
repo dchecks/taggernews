@@ -2,10 +2,8 @@
 from __future__ import unicode_literals
 
 from django.db.models import Count
-from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import render
-from requests import Response
 
 from tagger.models import Article, Tag
 from tagger.tag_user import tag_user

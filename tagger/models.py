@@ -36,7 +36,7 @@ class User(models.Model):
     priority = models.IntegerField()
     tagged = models.BooleanField(default=False)
     tagging = models.BooleanField(default=False)
-    total_items = models.IntegerField()
+    total_items = models.IntegerField(default=0)
 
     def __str__(self):
         return 'User ' + self.id \
