@@ -6,12 +6,14 @@ from django.db import connection
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
 
+
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
     application = get_wsgi_application()
     application = DjangoWhiteNoise(application)
 # Needs to be imported after django
 from tagger.models import Article, User, Item
+from tagger.article_fetcher import ArticleFetcher
 
 
 class Importer:
@@ -160,10 +162,22 @@ class Importer:
                 if counter % 10000 == 0:
                     print('Progress: ' + str(counter))
 
+    def fetch_imported_articles(self):
+        articles = Article.objects.all()\
+                                .filter(imported=True)\
+                                .filter(state=3)\
+                                .order_by('-hn_id')[:100]
+        article_ids = []
+        for article in articles:
+            article_ids.append(article.hn_id)
+            article.state = 6
+            article.save()
+        ArticleFetcher().fetch(article_ids)
 
-with open('../resources/HNStoriesAll.json', buffering=4096000) as data_file:
-    Importer().import_articles(data_file)
-with open('resources/HNCommentsAll.json', buffering=4096000) as data_file:
-    Importer().import_items(data_file)
-
+portly = Importer()
+# with open('../resources/HNStoriesAll.json', buffering=4096000) as data_file:
+#     portly.import_articles(data_file)
+# with open('resources/HNCommentsAll.json', buffering=4096000) as data_file:
+#     portly.import_items(data_file)
+portly.fetch_imported_articles()
 

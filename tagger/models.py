@@ -90,6 +90,7 @@ class Article(models.Model):
     # 3 waiting for prediction_text parsing
     # 4 goose failure / no text
     # 5 db save failure of text
+    # 6 parsing prediciton text
     # 10 tagged
     # 11 processed for tagging, no tags assigned
     # 12 tagging error
@@ -105,6 +106,7 @@ class Article(models.Model):
     tags = models.ManyToManyField(Tag, blank=True)
     rank = models.IntegerField(null=True)
     tagged = models.BooleanField(default=False)
+    imported = models.BooleanField(default=False)
 
 
     def __unicode__(self):

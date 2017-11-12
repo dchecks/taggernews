@@ -20,15 +20,65 @@ emoji_regex = re.compile(
 
 
 class ArticleFetcher:
+    STAT_TOTAL_REQUESTED = 0
+    STAT_INTEGRITY_ERROR = 0
+
     STAT_ITEM_FROM_DB = 0
-    STAT_ARTICLE_FROM_DB = 0
     STAT_ITEM_FROM_HN = 0
+    STAT_ITEM_NO_TOP_PARENT = 0
+    STAT_ITEM_CREATED = 0
+
+    STAT_ARTICLE_FROM_DB = 0
     STAT_ARTICLE_FROM_HN = 0
+    STAT_ARTICLE_NO_URL = 0
+    STAT_ARTICLE_CREATED = 0
+
+    STAT_HN_REQUEST = 0
+    STAT_HN_BACKOFF = 0
+    STAT_HN_UNKNOWN = 0
+
+    STAT_USER_CREATED = 0
+
+    STAT_GOOSE_FETCH = 0
+    STAT_GOOSE_FAILURE = 0
 
     def __init__(self):
         pass
 
-    # Only want to update_rank when getting from the front 'ranked' page
+    def print_stats(self):
+        print('------STATS------\n'
+              'STAT_TOTAL_REQUESTED = %s\n'
+              'STAT_HN_REQUEST = %s\n'
+              'STAT_ARTICLE_FROM_DB = %s\n'
+              'STAT_ARTICLE_FROM_HN = %s\n'
+              'STAT_ITEM_FROM_DB = %s\n'
+              'STAT_ITEM_FROM_HN = %s\n'
+              'STAT_ARTICLE_CREATED = %s\n'
+              'STAT_ITEM_CREATED = %s\n'
+              'STAT_ITEM_NO_TOP_PARENT = %s\n'
+              'STAT_INTEGRITY_ERROR = %s\n'
+              'STAT_ARTICLE_NO_URL = %s\n'
+              'STAT_HN_BACKOFF = %s\n'
+              'STAT_HN_UNKNOWN = %s\n'
+              'STAT_USER_CREATED = %s\n'
+              'STAT_GOOSE_FETCH = %s\n'
+              'STAT_GOOSE_FAILURE = %s\n\n' % (self.STAT_TOTAL_REQUESTED,
+                                           self.STAT_HN_REQUEST,
+                                           self.STAT_ARTICLE_FROM_DB,
+                                           self.STAT_ARTICLE_FROM_HN,
+                                           self.STAT_ITEM_FROM_DB,
+                                           self.STAT_ITEM_FROM_HN,
+                                           self.STAT_ARTICLE_CREATED,
+                                           self.STAT_ITEM_CREATED,
+                                           self.STAT_ITEM_NO_TOP_PARENT,
+                                           self.STAT_INTEGRITY_ERROR,
+                                           self.STAT_ARTICLE_NO_URL,
+                                           self.STAT_HN_BACKOFF,
+                                           self.STAT_HN_UNKNOWN,
+                                           self.STAT_USER_CREATED,
+                                           self.STAT_GOOSE_FETCH,
+                                           self.STAT_GOOSE_FAILURE))
+
     def fetch(self, hn_ids):
         """
             Given a list of hn ids, collect them
@@ -36,13 +86,18 @@ class ArticleFetcher:
         """
         ret_list = []
         for aid in hn_ids:
+            timer = time.time()
+            self.STAT_TOTAL_REQUESTED += 1
             ret_list.append(self.fetch_me(aid))
+            print('Fetched %s (%ss)' % (str(aid), str(round(time.time() - timer, 2))))
 
+            if self.STAT_TOTAL_REQUESTED % 100 == 0:
+                self.print_stats()
         return ret_list
 
     def goose_fetch(self, article_url):
         """Fetch the text from the given url"""
-        print("goosing " + article_url)
+        self.STAT_GOOSE_FETCH += 1
         goose = Goose()
         try:
             goosed_article = goose.extract(url=article_url)
@@ -62,12 +117,13 @@ class ArticleFetcher:
         """Attempt to fetch from the db"""
         try:
             item = Article.objects.get(hn_id=hn_id)
-            print("Fetching from db " + str(hn_id))
+            self.STAT_ARTICLE_FROM_DB += 1
         except Article.DoesNotExist:
             item = None
             # TODO Remove this hackery when article subclasses item
             try:
                 item = Item.objects.get(hn_id=hn_id)
+                self.STAT_ITEM_FROM_DB += 1
             except Item.DoesNotExist:
                 pass
 
@@ -75,16 +131,17 @@ class ArticleFetcher:
 
     def hn_fetch(self, article_id):
         """ Fetch the meta data from the hn api"""
-        print("Fetching from hn " + str(article_id))
         try:
             article_info = requests.get(ITEM_URL % article_id).json()
+            self.STAT_HN_REQUEST += 1
         except Exception as e:
             print('Failed to get from hn api, backing off for 15s', e)
             time.sleep(15)
             article_info = None
+            self.STAT_HN_BACKOFF += 1
 
         if article_info is None:
-            print("HN id unknown ", article_id)
+            self.STAT_HN_UNKNOWN += 1
             return Article.objects.create(
                 hn_id=article_id,
                 state=1,
@@ -95,18 +152,22 @@ class ArticleFetcher:
             submitter_id = 'deleted'
         submitter, created = User.objects.get_or_create(id=submitter_id)
 
+        if created:
+            self.STAT_USER_CREATED += 1
+
         if article_info.get('type') != 'story':
             # Recurse to get the top_parent
             parent_id = article_info.get('parent')
             if parent_id is None:
-                print('Failed to find the top parent for', parent_id)
+                print('Failed to find the top parent for' + str(article_id))
+                self.STAT_ITEM_NO_TOP_PARENT += 1
                 top_parent = None
                 parent_item = None
             else:
                 parent_item = self.fetch_me(parent_id)
                 # When an article is returned, we know we've hit the top
                 if isinstance(parent_item, Article):
-                    print('Found top parent' + str(parent_id))
+                    # print('Found top parent' + str(parent_id))
                     top_parent = parent_item
                     parent_item = None
                 else:
@@ -130,19 +191,21 @@ class ArticleFetcher:
                     top_parent=top_parent
                 )
                 item.save()
+                self.STAT_ITEM_CREATED += 1
             except IntegrityError as e:
-                print('Integrity error for item: ' + article_id)
+                self.STAT_INTEGRITY_ERROR += 1
                 try:
                     item = Article.objects.get(hn_id=article_id)
                 except Exception as e2:
-                    print('Failed to get item after integrity error')
+                    print('Failed to get article after integrity error')
                     print(e2)
                     item = None
         else:
             url = article_info.get('url')
             if (not url) or url.startswith(
                     tuple(URL_EXCLUSIONS)):  # hack for goose as it doesnt like some unicode characters,
-                print("No url for article " + str(article_id))
+                # print("No url for article " + str(article_id))
+                self.STAT_ARTICLE_NO_URL += 1
                 state = 2
             else:
                 state = 3
@@ -159,9 +222,10 @@ class ArticleFetcher:
                     timestamp=article_info.get('time')
                 )
                 item.save()
+                self.STAT_ARTICLE_CREATED += 1
             except IntegrityError as e:
-                print('Integrity error for article: ' + article_id)
                 try:
+                    self.STAT_INTEGRITY_ERROR += 1
                     item = Article.objects.get(hn_id=article_id)
                 except Exception as e2:
                     print('Failed to get article after integrity error')
@@ -183,7 +247,7 @@ class ArticleFetcher:
             return item
         else:
             article = item
-            if article.state is None or article.state is 3:
+            if article.state is None or article.state == 6 or article.state == 3:
                 # Get the article text
                 try:
                     (text, state) = self.goose_fetch(article.article_url)
@@ -196,11 +260,12 @@ class ArticleFetcher:
                         article.state = state
                         articletext.save()
                     else:
-                        print("Failed to goose article: " + str(article.hn_id))
+                        self.STAT_GOOSE_FAILURE += 1
                         article.state = state
 
                     article.save()
                 except Exception as e:
+                    self.STAT_GOOSE_FAILURE += 1
                     print("Failed to save prediction input to db for " + str(article.hn_id))
                     print(e)
                     article.state = 5

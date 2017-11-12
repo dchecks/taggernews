@@ -27,6 +27,7 @@ create table tagger.tagger_article (
     timestamp int,
     rank int,
     tagged TINYINT(1),
+    imported TINYINT(1) default 0,
     primary key (hn_id)
 );
 

@@ -55,6 +55,7 @@ class UserTagger:
             print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
             arty.fetch(to_fetch)
             refresh_user(user)
+            self.tagged_users += 1
         else:
             print(username + ' needed no update')
 
@@ -63,7 +64,7 @@ class UserTagger:
         user.tagging = False
         user.tagged = True
         user.save()
-        self.tagged_users += 1
+
         print('Finished tagging user ' + user.id)
 
     def tag_job(self, infinite=False):
@@ -72,12 +73,14 @@ class UserTagger:
                                 .exclude(tagged=True)\
                                 .exclude(tagging=True)\
                                 .exclude(priority__isnull=True)\
-                                .exclude(last_parsed__isnull=False)\
                                 .order_by('priority')\
                                 .first()
             if user is None:
-                user = User.objects.filter(opt_out=False, priority=None, tagged=False, tagging=False).first()
-                user.priority = 0
+                user = User.objects.exclude(opt_out=True)\
+                                    .exclude(tagged=True)\
+                                    .exclude(tagging=True)\
+                                    .filter(priority=None)\
+                                    .first()
             if user is None:
                 print('No users left to tag')
                 if infinite:
@@ -89,7 +92,7 @@ class UserTagger:
             else:
                 self.tag(user)
 
-            print('Total users tagged: ' + str(self.tagged_users))
+            print('Total users tagged: ' + str(self.tagged_users) + '\n')
 
 
 def fetch_user(username):
