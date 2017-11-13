@@ -17,6 +17,7 @@ emoji_regex = re.compile(
     u"(\ud83d[\ude80-\udeff])|"  # transport & map symbols
     u"(\ud83c[\udde0-\uddff])"  # flags (iOS)
     "+", flags=re.UNICODE)
+# Failed on \\xF0\\x9F\\x8C\\x89
 
 
 class ArticleFetcher:
@@ -156,6 +157,7 @@ class ArticleFetcher:
             self.STAT_USER_CREATED += 1
 
         if article_info.get('type') != 'story':
+            self.STAT_ITEM_FROM_HN += 1
             # Recurse to get the top_parent
             parent_id = article_info.get('parent')
             if parent_id is None:
@@ -201,6 +203,7 @@ class ArticleFetcher:
                     print(e2)
                     item = None
         else:
+            self.STAT_ARTICLE_FROM_HN += 1
             url = article_info.get('url')
             if (not url) or url.startswith(
                     tuple(URL_EXCLUSIONS)):  # hack for goose as it doesnt like some unicode characters,

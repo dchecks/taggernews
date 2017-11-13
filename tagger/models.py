@@ -26,7 +26,10 @@ class Tag(models.Model):
 
 
 def func_top_parent(item):
-    return item.top_parent
+    if hasattr(item, 'top_parent'):
+        return item.top_parent
+    else:
+        return None
 
 
 class User(models.Model):
@@ -57,7 +60,7 @@ class User(models.Model):
     def all_articles(self):
         """Returns all articles this user has interacted with"""
         top_parents = map(func_top_parent, self.item_set.all())
-        return list(self.article_set.all()) + top_parents
+        return filter(None, list(self.article_set.all()) + top_parents)
 
     def get_tags(self):
         tags = {}

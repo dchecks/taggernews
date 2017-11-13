@@ -61,12 +61,6 @@ class TextTagger(object):
 
 def tag_away(text_tagger, article):
     try:
-        # Mark for tagging
-        if article.state != 0:
-            return 0
-        article.state = 13
-        article.save()
-
         articletext = article.articletext.text
         if articletext is None:
             print('No prediction_input for ' + article.hn_id + ', state: ' + article.state)
@@ -130,19 +124,23 @@ def tag(infinite=False):
 
     total_count = 0
     while True:
-        article = Article.objects.filter(state=0).filter(tagged=False).order_by('-rank').first()
-        if not article:
+        article = Article.objects.filter(state=0)\
+                                    .filter(tagged=False)\
+                                    .order_by('-rank')\
+                                    .first()
+        if article:
+            article.state = 13
+            article.save()
+            tag_away(text_tagger, article)
+            total_count += 1
+            print('Completed, checking for more...')
+        else:
             print('No more articles to tag')
             if infinite:
                 time.sleep(10)
                 print('Sleeping... tagged so far: ' + str(total_count))
             else:
                 break
-        else:
-            tag_away(text_tagger, article)
-            total_count += 1
-            print('Completed, checking for more...')
-
     print('Finished after tagging %s articles' % total_count)
 
 if __name__ == "__main__":
