@@ -1,8 +1,11 @@
 import re
 import sys
+import traceback
+
 import requests
 import time
 from django.db import IntegrityError
+from django.db import OperationalError
 from goose import Goose
 from django.utils import timezone
 from models import Article, User, Item, ArticleText
@@ -101,15 +104,16 @@ class ArticleFetcher:
         self.STAT_GOOSE_FETCH += 1
         goose = Goose()
         try:
-            goosed_article = goose.extract(url=article_url)
+            goosed_article = goose.extract(url=str(article_url))
             text = '%s|||\n\n%s' % (
                 goosed_article.cleaned_text,
                 goosed_article.meta_description,
             )
             state = 0
         except Exception as e:
+            traceback.print_exc(e)
             sys.stderr.write(str(e))
-            state = 3
+            state = 4
             text = None
 
         return text, state
@@ -161,7 +165,7 @@ class ArticleFetcher:
             # Recurse to get the top_parent
             parent_id = article_info.get('parent')
             if parent_id is None:
-                print('Failed to find the top parent for' + str(article_id))
+                print('Failed to find the top parent for ' + str(article_id))
                 self.STAT_ITEM_NO_TOP_PARENT += 1
                 top_parent = None
                 parent_item = None
@@ -194,7 +198,7 @@ class ArticleFetcher:
                 )
                 item.save()
                 self.STAT_ITEM_CREATED += 1
-            except IntegrityError as e:
+            except OperationalError as e:
                 self.STAT_INTEGRITY_ERROR += 1
                 try:
                     item = Article.objects.get(hn_id=article_id)
@@ -213,11 +217,15 @@ class ArticleFetcher:
             else:
                 state = 3
             try:
+                title = article_info.get('title')
+                if not title:
+                    title = ''
+
                 item = Article.objects.create(
                     hn_id=article_id,
                     state=state,
                     parsed=timezone.now(),
-                    title=article_info.get('title'),
+                    title=emoji_regex.sub(u'\uFFFD', title),
                     article_url=article_info.get('url'),
                     score=article_info.get('score'),
                     number_of_comments=article_info.get('descendants'),
@@ -226,7 +234,7 @@ class ArticleFetcher:
                 )
                 item.save()
                 self.STAT_ARTICLE_CREATED += 1
-            except IntegrityError as e:
+            except OperationalError as e:
                 try:
                     self.STAT_INTEGRITY_ERROR += 1
                     item = Article.objects.get(hn_id=article_id)

@@ -18,7 +18,7 @@ create table tagger.tagger_articleText (
 create table tagger.tagger_article (
     hn_id integer not null,
     title varchar(1500),
-    state int,
+    state int not null,
     parsed DateTime,
     article_url varchar(1000),
     score int,
@@ -26,18 +26,16 @@ create table tagger.tagger_article (
     submitter varchar(15),
     timestamp int,
     rank int,
-    tagged TINYINT(1),
+    tagged TINYINT(1) default 0,
     imported TINYINT(1) default 0,
     primary key (hn_id)
 );
 
-alter table tagger_article add index submitter (submitter);
+alter table tagger.tagger_article add index submitter (submitter);
 
 create table tagger.tagger_user (
     id varchar(15) not null,
-    opt_out boolean not null default 0,
-    tagged boolean not null default 0,
-    tagging boolean not null default 0,
+    state int not null,
     last_parsed DateTime,
     priority int,
     total_items int,
@@ -50,11 +48,11 @@ create table tagger.tagger_item (
     type varchar(10) not null,
     parent int,
     top_parent int,
-    imported boolean default False
+    imported boolean default False,
     primary key (hn_id)
 );
 
-alter table tagger_item add index submitter (submitter);
+alter table tagger.tagger_item add index submitter (submitter);
 
 create table tagger.tagger_tag (
     id int not null auto_increment,
@@ -70,3 +68,8 @@ create table tagger.tagger_article_tags(
     primary key (id)
 );
 
+create view ustate as
+select state, count(state) from tagger_user group by state;
+
+create view astate as
+select state, count(state) from tagger_article group by state;

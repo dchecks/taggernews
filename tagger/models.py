@@ -34,28 +34,41 @@ def func_top_parent(item):
 
 class User(models.Model):
     id = models.CharField(primary_key=True, max_length=15)
-    opt_out = models.BooleanField(default=False)
+
+    # 0 Fresh
+    # 1 Not found on HN
+    # 5 Some exception
+    # 10 tagged
+    # 11 previously tagged, tag again
+    # 13 tagging
+    # 99 opt_out
+    state = models.IntegerField(null=True, default=0)
     last_parsed = models.DateTimeField()
     priority = models.IntegerField()
-    tagged = models.BooleanField(default=False)
-    tagging = models.BooleanField(default=False)
     total_items = models.IntegerField(default=0)
+
+    _article_cache = None
+    _item_cache = None
+
 
     def __str__(self):
         return 'User ' + self.id \
-               + ",\n opt_out=" + str(self.opt_out)\
+               + ",\n state=" + str(self.state)\
                + ",\n last_parsed=" + str(self.last_parsed)\
-               + ",\n priority=" + str(self.priority)\
-               + ",\n tagged=" + str(self.tagged)\
-               + ",\n tagging=" + str(self.tagging)
+               + ",\n priority=" + str(self.priority)
 
     def has_cached(self, hn_id):
-        for article in self.article_set.all():
-            if article.hn_id == hn_id:
-                return True
-        for item in self.item_set.all():
-            if item.hn_id == hn_id:
-                return True
+
+        if not self._article_cache:
+            self._article_cache = set()
+            for article in self.article_set.all():
+                self._article_cache.add(article.hn_id)
+        if not self._item_cache:
+            self._item_cache = set()
+            for item in self.article_set.all():
+                self._item_cache.add(item.hn_id)
+
+        return hn_id in self._article_cache or hn_id in self._item_cache
 
     def all_articles(self):
         """Returns all articles this user has interacted with"""
@@ -86,22 +99,21 @@ class Item(models.Model):
 class Article(models.Model):
     hn_id = models.IntegerField(primary_key=True)
 
-    # null for backwards compat,
     # 0 successfully parsed,
     # 1 hn id not found,
     # 2 no url
     # 3 waiting for prediction_text parsing
     # 4 goose failure / no text
     # 5 db save failure of text
-    # 6 parsing prediciton text
+    # 6 parsing prediction text
     # 10 tagged
     # 11 processed for tagging, no tags assigned
     # 12 tagging error
     # 13 selected for tagging
-    state = models.IntegerField(null=True)
+    state = models.IntegerField(null=False)
     parsed = models.DateTimeField()
-    title = models.CharField(max_length=1500)
-    article_url = models.URLField(max_length=1000, null=True)
+    title = models.CharField(max_length=2000)
+    article_url = models.URLField(max_length=2000, null=True)
     score = models.IntegerField()
     number_of_comments = models.IntegerField(null=True)
     submitter = models.ForeignKey("User", db_column='submitter', on_delete=models.PROTECT)
@@ -110,7 +122,6 @@ class Article(models.Model):
     rank = models.IntegerField(null=True)
     tagged = models.BooleanField(default=False)
     imported = models.BooleanField(default=False)
-
 
     def __unicode__(self):
         return self.title

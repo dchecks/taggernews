@@ -4,6 +4,7 @@ import numpy as np
 import time
 
 from django.core.wsgi import get_wsgi_application
+from django.db import transaction
 from gensim import corpora, models, utils
 from sklearn.externals import joblib
 from whitenoise.django import DjangoWhiteNoise
@@ -14,6 +15,8 @@ if __name__ == "__main__":
     application = DjangoWhiteNoise(application)
 from tagger import settings
 from tagger.models import Article, Tag
+
+ARTICLE_EXHAUSTION_SLEEP = 30
 
 class TextTagger(object):
     """Object which tags articles. Needs topic modeler and """
@@ -124,23 +127,34 @@ def tag(infinite=False):
 
     total_count = 0
     while True:
-        article = Article.objects.filter(state=0)\
-                                    .filter(tagged=False)\
-                                    .order_by('-rank')\
-                                    .first()
-        if article:
-            article.state = 13
-            article.save()
-            tag_away(text_tagger, article)
-            total_count += 1
-            print('Completed, checking for more...')
-        else:
+        batch = []
+        with transaction.atomic():
+            articles = Article.objects.select_for_update()\
+                                        .filter(state=0)\
+                                        .filter(tagged=False)\
+                                        .order_by('-rank')\
+                                        [:10]
+            for article in articles:
+                article.state = 13
+                article.save()
+                batch.append(article.hn_id)
+
+        if len(batch) == 0:
             print('No more articles to tag')
             if infinite:
-                time.sleep(10)
+                time.sleep(ARTICLE_EXHAUSTION_SLEEP)
                 print('Sleeping... tagged so far: ' + str(total_count))
             else:
                 break
+        else:
+            print('Loaded batch of ' + str(len(batch)))
+            for hn_id in batch:
+                article = Article.objects.get(hn_id=hn_id)
+                if article and article.state == 13:
+                    tag_away(text_tagger, article)
+                    total_count += 1
+        print('Completed, checking for more...')
+
     print('Finished after tagging %s articles' % total_count)
 
 if __name__ == "__main__":

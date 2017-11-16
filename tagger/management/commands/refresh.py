@@ -37,7 +37,7 @@ def refresh_top():
 
             submitter = arty.submitter
             # if user on front page isn't tagged yet prioritise them
-            if not submitter.tagged:
+            if submitter.state not in [10, 99]:
                 submitter.priority = i
                 submitter.save()
 

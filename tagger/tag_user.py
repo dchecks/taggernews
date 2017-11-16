@@ -1,9 +1,11 @@
 import sys
 import os
-
+import traceback
+import time
 import requests
-from datetime import timedelta, time
+from datetime import timedelta
 from django.core.wsgi import get_wsgi_application
+from django.db import transaction
 from whitenoise.django import DjangoWhiteNoise
 from django.utils import timezone
 
@@ -20,7 +22,7 @@ USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'
 USER_REFRESH_DELTA = timedelta(days=100)
 
 arty = ArticleFetcher()
-black_list = list(User.objects.filter(opt_out=True).values_list('id', flat=True))
+black_list = list(User.objects.filter(state=9).values_list('id', flat=True))
 black_list.append('deleted')
 
 
@@ -36,88 +38,108 @@ class UserTagger:
     def __init__(self):
         pass
 
-    def tag(self, user):
-        print('Tagging ' + str(user))
-        user.tagging = True
-        user.save()
+    def tag(self, username):
+        print('Tagging ' + username)
 
-        username = user.id
+        # user = User.objects.get(id=username)
+        user = fetch_user(username)
+        if not user:
+            return
         user_info = requests.get(USER_URL + username + '.json').json()
-        to_fetch = []
-        for item_str in user_info['submitted']:
-            user.total_items += 1
-            item_id = int(item_str)
-            if not user.has_cached(item_id):
-                # havent found our id in the db, must be new
-                to_fetch.append(item_id)
-        if to_fetch:
-            to_fetch = to_fetch[:100]  # Limit fetching to speed things up
-            print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
-            arty.fetch(to_fetch)
-            refresh_user(user)
-            self.tagged_users += 1
+        if not user_info:
+            user.state = 1
         else:
-            print(username + ' needed no update')
+            to_fetch = []
+            for item_str in user_info['submitted']:
+                user.total_items += 1
+                item_id = int(item_str)
+                if not user.has_cached(item_id):
+                    # havent found our id in the db, must be new
+                    to_fetch.append(item_id)
+            if to_fetch:
+                to_fetch = to_fetch[:100]  # Limit fetching to speed things up
+                print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
+                arty.fetch(to_fetch)
+                refresh_user(user)
+                self.tagged_users += 1
+            else:
+                print(username + ' needed no update')
 
-        user.last_parsed = timezone.now()
-        user.priority = None
-        user.tagging = False
-        user.tagged = True
+            user.last_parsed = timezone.now()
+            user.priority = None
+            user.state = 10
+
         user.save()
 
         print('Finished tagging user ' + user.id)
 
     def tag_job(self, infinite=False):
         while True:
-            user = User.objects.exclude(opt_out=True)\
-                                .exclude(tagged=True)\
-                                .exclude(tagging=True)\
-                                .exclude(priority__isnull=True)\
-                                .order_by('priority')\
-                                .first()
-            if user is None:
-                user = User.objects.exclude(opt_out=True)\
-                                    .exclude(tagged=True)\
-                                    .exclude(tagging=True)\
-                                    .filter(priority=None)\
-                                    .first()
-            if user is None:
-                print('No users left to tag')
-                if infinite:
-                    print('Sleeping...')
-                    time.sleep(10)
-                else:
-                    print("Quitting...")
-                    break
-            else:
-                self.tag(user)
+            try:
+                user = None
+                username = None
+                with transaction.atomic():
+                    user = User.objects.select_for_update() \
+                        .filter(state=0)\
+                        .exclude(priority__isnull=True) \
+                        .order_by('priority') \
+                        .first()
+                    if user is None:
+                        user = User.objects.select_for_update() \
+                            .filter(state=0)\
+                            .filter(priority=None) \
+                            .first()
+                    if user:
+                        user.state = 13
+                        user.save()
+                        username = user.id
 
-            print('Total users tagged: ' + str(self.tagged_users) + '\n')
+                if user:
+                    self.tag(username)
+                else:
+                    print('No users left to tag')
+                    if infinite:
+                        print('Sleeping...')
+                        time.sleep(10)
+                    else:
+                        print("Quitting...")
+                        break
+                print('Total users tagged: ' + str(self.tagged_users) + '\n')
+            except Exception as e:
+                traceback.print_exc(e)
+                if username:
+                    try:
+                        with transaction.atomic():
+                            user = User.objects.select_for_update().filter(id=username).first()
+                            if user:
+                                user.state = 5
+                                user.save()
+                    except Exception as e:
+                        print('And again...')
+                        traceback.print_exc(e)
+                time.sleep(5)
 
 
 def fetch_user(username):
-    print('Fetching user ' + username)
-
     if username in black_list:
         print('User on blacklist, ' + username)
         return None
 
     try:
-        user = User.objects.get(id=username)
+        user = User.objects.filter(id=username).prefetch_related('article_set').prefetch_related('item_set').first()
         threshold = timezone.now() - USER_REFRESH_DELTA
         if user.last_parsed and user.last_parsed < threshold:
             print('User cache expired, ' + username)
-            user.tagged = False
-        elif user.tagged:
+            user.state = 11
+        elif user.state == 10:
             print('Using cached version of ' + username)
-            return user
     except User.DoesNotExist:
         user_info = requests.get(USER_URL + username + '.json').json()
         if not user_info:
             print('User doesn\'t exist, ' + username)
             return None
         print('Creating user, ' + username)
-        user = User(id=username, opt_out=False, tagged=False, last_parsed=None)
+        user = User(id=username, state=0, last_parsed=None)
 
     user.save()
     return user
@@ -125,16 +147,20 @@ def fetch_user(username):
 
 def tag_user(username, force_tagging=False):
     """Returns failure code and message or success and tags"""
+    print('Fetching user ' + username)
     user = fetch_user(username)
     if user and user.last_parsed is not None:
         print('Tagging...')
         tags = user.get_tags()
+        if len(tags) == 0:
+            return 204
         return 200, tags
     elif not user:
         return 404, {'message': 'User unavailable'}
     elif force_tagging:
         print('Forced tagging...may be some time')
-        UserTagger().tag(user)
+        UserTagger().tag(user.id)
+        user.refresh_from_db()
         articles = user.all_articles()
         tag_list(articles)
         user.refresh_from_db()
