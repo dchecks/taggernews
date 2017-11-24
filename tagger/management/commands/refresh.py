@@ -14,19 +14,19 @@ if __name__ == "__main__":
 
 from tagger.models import Article
 from tagger.article_fetcher import ArticleFetcher
+from tagger.comment_fetcher import CommentFetcher
 
 TOP_ARTICLES_URL = 'https://hacker-news.firebaseio.com/v0/topstories/.json'
+ITEM_URL = 'https://hacker-news.firebaseio.com/v0/item/%s.json'
 LIMIT_TOP_RESULTS = 300
 
+arty = ArticleFetcher()
+commy = CommentFetcher()
 
-def refresh_top():
-    top_article_ids = requests.get(TOP_ARTICLES_URL).json()[:LIMIT_TOP_RESULTS]
-
-    articles = ArticleFetcher().fetch(top_article_ids)
-
+def update_rank(top_article_ids):
+    print('Updating rank...')
     # Updates all to not ranked
     Article.objects.exclude(rank__isnull=True).update(rank=None)
-
     print('New order:')
     for i, article_id in enumerate(top_article_ids):
         try:
@@ -44,7 +44,37 @@ def refresh_top():
         except Article.DoesNotExist:
             print('Skipping ' + str(i) + ': ' + str(article_id))
 
-    #self.stdout.write(self.style.SUCCESS('Done. Fetched: %s' % (len(articles))))
+
+def collect_comments(article_dict):
+    print('Collecting kids...')
+    for key in article_dict.keys():
+        arty.fetch(article_dict[key])
+
+
+def refresh_top():
+    top_article_ids = requests.get(TOP_ARTICLES_URL).json()[:LIMIT_TOP_RESULTS]
+
+    articles = arty.fetch(top_article_ids)
+    print('Fetched: %s' % (len(articles)))
+
+    update_rank(top_article_ids)
+
+    for article in articles:
+        try:
+            article_info = requests.get(ITEM_URL % article.hn_id).json()
+
+            article.score = article_info.get('score')
+            if article.number_of_comments != article_info.get('descendants'):
+                article.number_of_comments = article_info.get('descendants')
+                article.save()
+                commy.fetch(article, article_info.get('kids'))
+            else:
+                article.save()
+        except Exception as e:
+            pass
+
+    print('Done')
+
 
 class Command(BaseCommand):
     help = 'Gets and ranks the homepage articles'
