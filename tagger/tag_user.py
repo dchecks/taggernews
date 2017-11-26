@@ -153,7 +153,7 @@ def tag_user(username, force_tagging=False):
         print('Tagging...')
         tags = user.get_tags()
         if len(tags) == 0:
-            return 204
+            return 204, {}
         return 200, tags
     elif not user:
         return 404, {'message': 'User unavailable'}

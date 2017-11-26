@@ -4,7 +4,6 @@ import traceback
 
 import requests
 import time
-from django.db import IntegrityError
 from django.db import OperationalError
 from goose import Goose
 from django.utils import timezone

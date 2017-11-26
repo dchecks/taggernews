@@ -67,7 +67,8 @@ def refresh_top():
             if article.number_of_comments != article_info.get('descendants'):
                 article.number_of_comments = article_info.get('descendants')
                 article.save()
-                commy.fetch(article, article_info.get('kids'))
+                # Probably don't need this if running the streamer
+                # commy.fetch(article, article_info.get('kids'))
             else:
                 article.save()
         except Exception as e:
