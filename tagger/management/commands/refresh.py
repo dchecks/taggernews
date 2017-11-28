@@ -1,12 +1,13 @@
 from __future__ import print_function
 
+import traceback
+
 import requests
 from django.core.management.base import BaseCommand
 import os
 
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
-
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tagger.settings")
     application = get_wsgi_application()
@@ -54,25 +55,22 @@ def collect_comments(article_dict):
 def refresh_top():
     top_article_ids = requests.get(TOP_ARTICLES_URL).json()[:LIMIT_TOP_RESULTS]
 
-    articles = arty.fetch(top_article_ids)
-    print('Fetched: %s' % (len(articles)))
+    arty.fetch(top_article_ids)
+    print('Fetched: %s' % (len(top_article_ids)))
 
     update_rank(top_article_ids)
 
-    for article in articles:
+    for article_id in top_article_ids:
         try:
-            article_info = requests.get(ITEM_URL % article.hn_id).json()
-
+            article_info = requests.get(ITEM_URL % article_id).json()
+            article = Article.objects.get(hnid = article_id)
             article.score = article_info.get('score')
-            if article.number_of_comments != article_info.get('descendants'):
-                article.number_of_comments = article_info.get('descendants')
-                article.save()
-                # Probably don't need this if running the streamer
-                # commy.fetch(article, article_info.get('kids'))
-            else:
-                article.save()
+            article.number_of_comments = article_info.get('descendants')
+            article.save()
         except Exception as e:
-            pass
+            print('Failed to save scores for article ' + str(article_id))
+            traceback.print_exc(e)
+
 
     print('Done')
 
