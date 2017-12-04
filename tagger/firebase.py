@@ -3,7 +3,6 @@
 from sseclient import SSEClient
 import requests
 
-from Queue import Queue
 import json
 import threading
 import socket

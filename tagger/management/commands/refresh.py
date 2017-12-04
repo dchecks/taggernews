@@ -52,18 +52,12 @@ def collect_comments(article_dict):
         arty.fetch(article_dict[key])
 
 
-def refresh_top():
-    top_article_ids = requests.get(TOP_ARTICLES_URL).json()[:LIMIT_TOP_RESULTS]
-
-    arty.fetch(top_article_ids)
-    print('Fetched: %s' % (len(top_article_ids)))
-
-    update_rank(top_article_ids)
-
+def update_scores(top_article_ids):
+    print('Updating scores')
     for article_id in top_article_ids:
         try:
             article_info = requests.get(ITEM_URL % article_id).json()
-            article = Article.objects.get(hnid = article_id)
+            article = Article.objects.get(hn_id=article_id)
             article.score = article_info.get('score')
             article.number_of_comments = article_info.get('descendants')
             article.save()
@@ -71,6 +65,15 @@ def refresh_top():
             print('Failed to save scores for article ' + str(article_id))
             traceback.print_exc(e)
 
+
+def refresh_top():
+    top_article_ids = requests.get(TOP_ARTICLES_URL).json()[:LIMIT_TOP_RESULTS]
+
+    arty.fetch(top_article_ids)
+    print('Fetched: %s' % (len(top_article_ids)))
+
+    update_rank(top_article_ids)
+    update_scores(top_article_ids)
 
     print('Done')
 
