@@ -121,6 +121,9 @@ class UserTagger:
 
 
 def fetch_user(username):
+    if not username:
+        print('No username given')
+        return None
     if username in black_list:
         print('User on blacklist, ' + username)
         return None
@@ -128,7 +131,7 @@ def fetch_user(username):
     try:
         user = User.objects.filter(id=username).prefetch_related('article_set').prefetch_related('item_set').first()
         threshold = timezone.now() - USER_REFRESH_DELTA
-        if user.last_parsed and user.last_parsed < threshold:
+        if user.last_parsed is not None and user.last_parsed < threshold:
             print('User cache expired, ' + username)
             user.state = 11
         elif user.state == 10:

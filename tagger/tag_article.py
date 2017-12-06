@@ -17,6 +17,7 @@ from tagger import settings
 from tagger.models import Article, Tag
 
 ARTICLE_EXHAUSTION_SLEEP = 30
+LIMIT_RESOURCES = True
 
 class TextTagger(object):
     """Object which tags articles. Needs topic modeler and """
@@ -125,6 +126,12 @@ def tag(infinite=False):
     text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
     print('Loaded resources, created tagger')
 
+    if LIMIT_RESOURCES:
+        select_size = 2
+        os.nice(20)
+    else:
+        select_size = 10
+
     total_count = 0
     while True:
         batch = []
@@ -133,7 +140,7 @@ def tag(infinite=False):
                                         .filter(state=0)\
                                         .filter(tagged=False)\
                                         .order_by('-rank')\
-                                        [:10]
+                                        [:select_size]
             for article in articles:
                 article.state = 13
                 article.save()
@@ -153,6 +160,8 @@ def tag(infinite=False):
                 if article and article.state == 13:
                     tag_away(text_tagger, article)
                     total_count += 1
+                    if LIMIT_RESOURCES:
+                        time.sleep(1)
         print('Completed, checking for more...')
 
     print('Finished after tagging %s articles' % total_count)

@@ -163,16 +163,19 @@ class Importer:
                     print('Progress: ' + str(counter))
 
     def fetch_imported_articles(self):
-        articles = Article.objects.all()\
-                                .filter(imported=True)\
-                                .filter(state=3)\
-                                .order_by('-hn_id')[:100]
-        article_ids = []
-        for article in articles:
-            article_ids.append(article.hn_id)
-            article.state = 6
-            article.save()
-        ArticleFetcher().fetch(article_ids)
+        arty = ArticleFetcher()
+        while True:
+            articles = Article.objects.all()\
+                                    .filter(imported=True)\
+                                    .filter(state=3)\
+                                    .order_by('-hn_id')[:10]
+            article_ids = []
+            for article in articles:
+                article_ids.append(article.hn_id)
+                article.state = 6
+                article.save()
+            arty.fetch(article_ids)
+            print('Batch complete')
 
 portly = Importer()
 # with open('../resources/HNStoriesAll.json', buffering=4096000) as data_file:
