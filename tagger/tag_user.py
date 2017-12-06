@@ -8,6 +8,7 @@ from django.core.wsgi import get_wsgi_application
 from django.db import transaction
 from whitenoise.django import DjangoWhiteNoise
 from django.utils import timezone
+from cachetools import LFUCache
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
@@ -21,6 +22,7 @@ from tagger.tag_article import tag_list
 USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'
 USER_REFRESH_DELTA = timedelta(days=100)
 
+cache = LFUCache(maxsize=100)
 arty = ArticleFetcher()
 black_list = list(User.objects.filter(state=9).values_list('id', flat=True))
 black_list.append('deleted')
@@ -153,8 +155,14 @@ def tag_user(username, force_tagging=False):
     print('Fetching user ' + username)
     user = fetch_user(username)
     if user and user.last_parsed is not None:
-        print('Tagging...')
-        tags = user.get_tags()
+        if username in cache:
+            print('Fetching from cache')
+            tags = cache[username]
+        else:
+            print('Tagging...')
+            tags = user.get_tags()
+            cache[username] = tags
+
         if len(tags) == 0:
             return 204, {}
         return 200, tags
