@@ -4,11 +4,11 @@ import traceback
 import time
 import requests
 from datetime import timedelta
+from cachetools import TTLCache
 from django.core.wsgi import get_wsgi_application
 from django.db import transaction
 from whitenoise.django import DjangoWhiteNoise
 from django.utils import timezone
-from cachetools import LFUCache
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
@@ -22,7 +22,7 @@ from tagger.tag_article import tag_list
 USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'
 USER_REFRESH_DELTA = timedelta(days=100)
 
-cache = LFUCache(maxsize=100)
+cache = TTLCache(maxsize=100, ttl=600)
 arty = ArticleFetcher()
 black_list = list(User.objects.filter(state=9).values_list('id', flat=True))
 black_list.append('deleted')

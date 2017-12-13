@@ -17,7 +17,7 @@ from tagger import settings
 from tagger.models import Article, Tag
 
 ARTICLE_EXHAUSTION_SLEEP = 30
-LIMIT_RESOURCES = True
+LIMIT_RESOURCES = False
 
 class TextTagger(object):
     """Object which tags articles. Needs topic modeler and """
@@ -99,7 +99,7 @@ def tag_away(text_tagger, article):
         article.state = 10
 
     article.save()
-    print('Tagged article %s \n%s\n%s' % (article.hn_id, article.title, article_tags))
+    print('Tagged article %s \n%s' % (article.hn_id, article_tags))
     return 1
 
 

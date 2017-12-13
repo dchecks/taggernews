@@ -32,6 +32,7 @@ create table tagger.tagger_article (
 );
 
 alter table tagger.tagger_article add index submitter (submitter);
+alter table tagger.tagger_article add index rank (rank);
 
 create table tagger.tagger_user (
     id varchar(15) not null,
