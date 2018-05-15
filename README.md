@@ -15,7 +15,7 @@ And this was a good project to practice my python...
 ### Setup
 ##### Setup the environment
 ```
-git clone https://github.com/mahiDan/taggernews.git
+git clone https://github.com/dchecks/taggernews.git
 cd taggernews
 mkvirtualenv taggernews
 ln -s ~/.virtualenvs/taggernews/bin/activate ./activate
