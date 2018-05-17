@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+<table border="0">
+    <tr class='athing'>
+        <td valign="top">user:</td>
+        <td timestamp="1217384830">
+            <a href="user?id={{ user.id }}" class="hnuser">{{ user.id }}</a>
+        </td>
+    </tr>
+    <tr>
+        <td valign="top">created:</td>
+        <td><a href="https://news.ycombinator.com/front?day={{ user.born|date:'Y-m-d' }}&birth={{ user.id }}">{{ user.born|date:'F j, Y' }}</a></td>
+    </tr>
+    <tr>
+        <td valign="top">karma:</td><td>{{ user.karma }}</td>
+    </tr>
+    <tr>
+        <td valign="top">about:</td><td>{{ user.bio }}</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td><a href="https://news.ycombinator.com/submitted?id={{ user.id }}"><u>submissions</u></a></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td><a href="https://news.ycombinator.com/threads?id={{ user.id }}"><u>comments</u></a></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td><a href="https://news.ycombinator.com/favorites?id={{ user.id }}"><u>favorites</u></a></td>
+    </tr>
+</table>
+<br>
+<br>
+<span class='tag'>" + element[0] + "</span> " + element[1] + "<br />
+
+{% for tag in tags %}
+
+
+{% endfor %}
+
+{% endblock %}

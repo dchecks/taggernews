@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import logging
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import render
 
 from tagger.models import Article, Tag
-from tagger.tag_user import tag_user
+from tagger.tag_user import tag_user, fetch_user
 
 
 def news(request, page="1"):
@@ -30,6 +31,21 @@ def news(request, page="1"):
     return render(request, 'article_list.html', context)
 
 
+def user(request, username):
+
+    user = fetch_user(username)
+
+    articles = user.all_articles()
+    articles.sort()  # TODO chrono comparator
+
+    context = {
+        "user": user,
+        "tags": user.get_tags(),
+        "articles": articles,
+    }
+    return render(request, 'user.html', context)
+
+
 def by_tag(request, tag_string, page="1"):
     page_number = int(page)
     start = (page_number - 1) * 30
@@ -37,7 +53,7 @@ def by_tag(request, tag_string, page="1"):
 
     tag_names = [tag_name.lower() for tag_name in tag_string.split('+')]
 
-    print(tag_names)
+    logging.info(tag_names)
 
     tags = Tag.objects.filter(lowercase_name__in=tag_names)
 

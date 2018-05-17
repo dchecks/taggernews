@@ -47,6 +47,10 @@ class User(models.Model):
     priority = models.IntegerField()
     total_items = models.IntegerField(default=0)
 
+    karma = models.IntegerField(null=True)
+    born = models.DateTimeField()
+    bio = models.CharField(max_length=2000)
+
     _article_cache = None
     _item_cache = None
 
@@ -141,9 +145,9 @@ class Article(models.Model):
         now = datetime.datetime.now()
         then = datetime.datetime.fromtimestamp(self.timestamp)
         delta = now - then
-        if (delta.seconds < 60):
+        if delta.seconds < 60:
             return str(delta.seconds) + " seconds"
-        if (delta.seconds < 3600):
+        if delta.seconds < 3600:
             return str(delta.seconds / 60) + " minutes"
         return str(delta.seconds / 3600) + " hours"
 
