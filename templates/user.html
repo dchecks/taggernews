@@ -6,7 +6,7 @@
 <table border="0">
     <tr class='athing'>
         <td valign="top">user:</td>
-        <td timestamp="1217384830">
+        <td timestamp="{{ user.born|date:'U' }}">
             <a href="user?id={{ user.id }}" class="hnuser">{{ user.id }}</a>
         </td>
     </tr>
@@ -35,11 +35,4 @@
 </table>
 <br>
 <br>
-<span class='tag'>" + element[0] + "</span> " + element[1] + "<br />
-
-{% for tag in tags %}
-
-
-{% endfor %}
-
 {% endblock %}
