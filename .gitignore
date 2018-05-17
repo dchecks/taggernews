@@ -21,3 +21,4 @@ tests/report/
 .env
 staticfiles
 articles/model/
+mj_models/
