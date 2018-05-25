@@ -2,6 +2,7 @@ import glob
 import os
 import numpy as np
 import time
+import logging
 
 from django.core.wsgi import get_wsgi_application
 from django.db import transaction
@@ -67,7 +68,7 @@ def tag_away(text_tagger, article):
     try:
         articletext = article.articletext.text
         if articletext is None:
-            print('No prediction_input for ' + article.hn_id + ', state: ' + article.state)
+            logging.info('No prediction_input for ' + article.hn_id + ', state: ' + article.state)
             article.state = 4
             article.save()
             return 0
@@ -77,7 +78,7 @@ def tag_away(text_tagger, article):
         predicted_tags = text_tagger.text_to_tags(articletext)
 
     except Exception as e:
-        print('Failed to tag article %s. Error: %s.' % (article.hn_id, e))
+        logging.info('Failed to tag article %s. Error: %s.' % (article.hn_id, e))
         article.state = 12
         article.save()
         return
@@ -99,7 +100,7 @@ def tag_away(text_tagger, article):
         article.state = 10
 
     article.save()
-    print('Tagged article %s \n%s' % (article.hn_id, article_tags))
+    logging.info('Tagged article %s \n%s' % (article.hn_id, article_tags))
     return 1
 
 
@@ -113,18 +114,18 @@ def latest_resources():
 def tag_list(articles):
     topic_model, dictionary, lr_dictionary = latest_resources()
     text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
-    print('Loaded resources, created tagger')
+    logging.info('Loaded resources, created tagger')
     total_count = 0
     for article in articles:
         tag_away(text_tagger, article)
         total_count += 1
-    print('Finished after tagging %s articles' % total_count)
+    logging.info('Finished after tagging %s articles' % total_count)
 
 
 def tag(infinite=False):
     topic_model, dictionary, lr_dictionary = latest_resources()
     text_tagger = TextTagger.init_from_files(topic_model, dictionary, lr_dictionary, threshold=0.3)
-    print('Loaded resources, created tagger')
+    logging.info('Loaded resources, created tagger')
 
     if LIMIT_RESOURCES:
         select_size = 2
@@ -147,14 +148,14 @@ def tag(infinite=False):
                 batch.append(article.hn_id)
 
         if len(batch) == 0:
-            print('No more articles to tag')
+            logging.info('No more articles to tag')
             if infinite:
                 time.sleep(ARTICLE_EXHAUSTION_SLEEP)
-                print('Sleeping... tagged so far: ' + str(total_count))
+                logging.info('Sleeping... tagged so far: ' + str(total_count))
             else:
                 break
         else:
-            print('Loaded batch of ' + str(len(batch)))
+            logging.info('Loaded batch of ' + str(len(batch)))
             for hn_id in batch:
                 article = Article.objects.get(hn_id=hn_id)
                 if article and article.state == 13:
@@ -162,9 +163,9 @@ def tag(infinite=False):
                     total_count += 1
                     if LIMIT_RESOURCES:
                         time.sleep(1)
-        print('Completed, checking for more...')
+        logging.info('Completed, checking for more...')
 
-    print('Finished after tagging %s articles' % total_count)
+    logging.info('Finished after tagging %s articles' % total_count)
 
 if __name__ == "__main__":
     tag(True)

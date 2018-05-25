@@ -1,6 +1,6 @@
 import os
-
 import time
+import logging
 
 from datetime import datetime
 from django.core.wsgi import get_wsgi_application
@@ -24,11 +24,11 @@ class StreamUpdater:
 
     def add(self, stream_text):
         message = stream_text[1]
-        print(datetime.now())
-        print('Data: ' + str(message))
+        logging.info(datetime.now())
+        logging.info('Data: ' + str(message))
         items = message['data']['items']
         items = self.arty.fetch(items)
-        print('Completed fetch of ' + str(len(items)))
+        logging.info('Completed fetch of ' + str(len(items)))
 
 
 updater = StreamUpdater()

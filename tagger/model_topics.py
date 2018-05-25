@@ -40,7 +40,7 @@ NUM_PASSES = 10
 def all_articletext():
     """Returns all text for articles in the database up to the limit"""
     articles = Article.objects.all().filter(state=0)[:IMPORT_LIMIT]
-    print("Selected " + str(len(articles)) + " articles for text tokenisation")
+    logging.info("Selected " + str(len(articles)) + " articles for text tokenisation")
     input_text = []
     for art in articles:
         input_text.append(art.articletext.text)
@@ -87,7 +87,7 @@ corpus = [dictionary.doc2bow(doc) for doc in token_docs]
 # Train LDA
 model_hi = models.ldamodel.LdaModel(corpus, id2word=dictionary, num_topics=NUM_TOPICS, passes=NUM_PASSES)
 model_fname = make_time_filename(MODEL_NAME + "_" + str(NUM_TOPICS) + "topics_" + str(NUM_PASSES) + "pass", ".gensim")
-print("Saving model to " + model_fname)
+logging.info("Saving model to " + model_fname)
 model_hi.save(model_fname)
 
 
@@ -101,5 +101,5 @@ def label_article(text, trained_model):
 def show_topics(text, trained_model, n=20):
     topics_and_weights = label_article(text, trained_model)
     for topic, weight in sorted(topics_and_weights, key=lambda x: -x[1]):
-        print(weight, topic, trained_model.print_topic(topic, n))
-        print()
+        logging.info(weight, topic, trained_model.print_topic(topic, n))
+        logging.info()

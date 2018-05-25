@@ -4,6 +4,7 @@
 """Predict topics using topic ml_models or other stuff!"""
 import os
 import pickle
+import logging
 
 import pandas as pd
 from django.core.wsgi import get_wsgi_application
@@ -66,7 +67,7 @@ def create_logistic_model(df, _story_ids, data):
         y_ = np.array([s in positive_story_ids for s in _story_ids])
         X_ = data
         lr = linear_model.LogisticRegression(C=C_VALUE)
-        print(label, Counter(y_))
+        logging.info(label, Counter(y_))
 
         cv_score = cross_validation.cross_val_score(
             lr, X_, y_, cv=10, scoring="roc_auc").mean()
@@ -75,12 +76,12 @@ def create_logistic_model(df, _story_ids, data):
         lr_models[label] = lr
         probs = lr.predict_proba(X_)[:, 1]
         results.append({"alg": "log reg", "label": label, "auc": cv_score})
-        print(C_VALUE, label, cv_score, len(probs[probs > 0.19]), Counter(labels == label))
-        print()
+        logging.info(C_VALUE, label, cv_score, len(probs[probs > 0.19]), Counter(labels == label))
+        logging.info()
     results_df = pd.DataFrame(results)
 
     lr_fname = make_time_filename(LOGISTIC_MODEL_NAME, ".pkl")
-    print("writing file", lr_fname)
+    logging.info("writing file", lr_fname)
     with open(lr_fname, "wb") as f:
         pickle.dump(lr_models, f, protocol=2)
 
@@ -100,13 +101,13 @@ def create_random_forest_model(df, _story_ids, data):
         rf.fit(X_, y_)
         rf_models[label] = rf
         this_output = {"alg": "random forest", "label": label, "auc": cv_score}
-        print(this_output)
+        logging.info(this_output)
         results.append(this_output)
-        print()
+        logging.info()
     results_df2 = pd.DataFrame(results)
 
     rf_fname = make_time_filename(RANDOM_FOREST_NAME, ".pkl")
-    print("writing random forest file", rf_fname)
+    logging.info("writing random forest file", rf_fname)
     with open(rf_fname, "wb") as f:
         pickle.dump(rf_models, f, protocol=2)
 
@@ -124,7 +125,7 @@ def add_article(label, story_id, article):
     topic_dict = story_id_to_topicdict(article)
     topic_dicts.append(topic_dict)
     story_id_to_topics[story_id] = topic_dict
-    # print(label)
+    # logging.info(label)
 
 
 def load_articles(label_df):
@@ -136,7 +137,7 @@ def load_articles(label_df):
 
         # DEBUG
         if DEBUG and len(uncached_articles) is DEBUG_FETCH_MAX:
-            print("Stopped loading articles early due to DEBUG flag")
+            logging.info("Stopped loading articles early due to DEBUG flag")
             break
 
         article_id = article_id.item()
@@ -153,23 +154,23 @@ def load_articles(label_df):
         except Article.DoesNotExist:
             uncached_articles[article_id] = label
 
-    print("Article load stats:")
-    print("Skipped due to invalid state: " + str(skipped_due_state))
-    print("Uncached articles: " + str(len(uncached_articles)))
-    print("Cached articles: " + str(loaded_from_db))
+    logging.info("Article load stats:")
+    logging.info("Skipped due to invalid state: " + str(skipped_due_state))
+    logging.info("Uncached articles: " + str(len(uncached_articles)))
+    logging.info("Cached articles: " + str(loaded_from_db))
 
     if FETCH_NOT_CACHED:
-        print("Fetching articles...")
+        logging.info("Fetching articles...")
         articles = ArticleFetcher().fetch(uncached_articles.keys(), update_rank=False)
-        print("Fetched " + str(len(articles)) + " articles. Processing...")
+        logging.info("Fetched " + str(len(articles)) + " articles. Processing...")
         # Add the newly correctly parsed articles
         for article in articles:
             if article.state is not 0:
-                print("Skipping article: " + str(article.hn_id) + " due to state: " + str(article.state))
+                logging.info("Skipping article: " + str(article.hn_id) + " due to state: " + str(article.state))
             else:
                 add_article(uncached_articles[article.hn_id], article.hn_id, article)
     else:
-        print("Not attempting to fetch, set FETCH_NOT_CACHED if you want them, this can take a long time.")
+        logging.info("Not attempting to fetch, set FETCH_NOT_CACHED if you want them, this can take a long time.")
 
 
 load_articles(label_df)

@@ -3,6 +3,7 @@ import os
 import traceback
 import time
 import requests
+import logging
 from datetime import timedelta
 from cachetools import TTLCache
 from django.core.wsgi import get_wsgi_application
@@ -41,7 +42,7 @@ class UserTagger:
         pass
 
     def tag(self, username):
-        print('Tagging ' + username)
+        logging.info('Tagging ' + username)
 
         # user = User.objects.get(id=username)
         user = fetch_user(username)
@@ -60,12 +61,12 @@ class UserTagger:
                     to_fetch.append(item_id)
             if to_fetch:
                 to_fetch = to_fetch[:100]  # Limit fetching to speed things up
-                print('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
+                logging.info('Fetching ' + str(len(to_fetch)) + ' items for user ' + username)
                 arty.fetch(to_fetch)
                 refresh_user(user)
                 self.tagged_users += 1
             else:
-                print(username + ' needed no update')
+                logging.info(username + ' needed no update')
 
             user.last_parsed = timezone.now()
             user.priority = None
@@ -73,7 +74,7 @@ class UserTagger:
 
         user.save()
 
-        print('Finished tagging user ' + user.id)
+        logging.info('Finished tagging user ' + user.id)
 
     def tag_job(self, infinite=False):
         while True:
@@ -99,14 +100,14 @@ class UserTagger:
                 if user:
                     self.tag(username)
                 else:
-                    print('No users left to tag')
+                    logging.info('No users left to tag')
                     if infinite:
-                        print('Sleeping...')
+                        logging.info('Sleeping...')
                         time.sleep(10)
                     else:
-                        print("Quitting...")
+                        logging.info("Quitting...")
                         break
-                print('Total users tagged: ' + str(self.tagged_users) + '\n')
+                logging.info('Total users tagged: ' + str(self.tagged_users) + '\n')
             except Exception as e:
                 traceback.print_exc(e)
                 if username:
@@ -117,33 +118,33 @@ class UserTagger:
                                 user.state = 5
                                 user.save()
                     except Exception as e:
-                        print('And again...')
+                        logging.info('And again...')
                         traceback.print_exc(e)
                 time.sleep(5)
 
 
 def fetch_user(username):
     if not username:
-        print('No username given')
+        logging.info('No username given')
         return None
     if username in black_list:
-        print('User on blacklist, ' + username)
+        logging.info('User on blacklist, ' + username)
         return None
 
     try:
         user = User.objects.filter(id=username).prefetch_related('article_set').prefetch_related('item_set').first()
         threshold = timezone.now() - USER_REFRESH_DELTA
         if user.last_parsed is not None and user.last_parsed < threshold:
-            print('User cache expired, ' + username)
+            logging.info('User cache expired, ' + username)
             user.state = 11
         elif user.state == 10:
-            print('Using cached version of ' + username)
+            logging.info('Using cached version of ' + username)
     except User.DoesNotExist:
         user_info = requests.get(USER_URL + username + '.json').json()
         if not user_info:
-            print('User doesn\'t exist, ' + username)
+            logging.info('User doesn\'t exist, ' + username)
             return None
-        print('Creating user, ' + username)
+        logging.info('Creating user, ' + username)
         user = User(id=username, state=0, last_parsed=None)
 
     user.save()
@@ -152,14 +153,14 @@ def fetch_user(username):
 
 def tag_user(username, force_tagging=False):
     """Returns failure code and message or success and tags"""
-    print('Fetching user ' + username)
+    logging.info('Fetching user ' + username)
     user = fetch_user(username)
     if user and user.last_parsed is not None:
         if username in cache:
-            print('Fetching from cache')
+            logging.info('Fetching from cache')
             tags = cache[username]
         else:
-            print('Tagging...')
+            logging.info('Tagging...')
             tags = user.get_tags()
             cache[username] = tags
 
@@ -169,7 +170,7 @@ def tag_user(username, force_tagging=False):
     elif not user:
         return 404, {'message': 'User unavailable'}
     elif force_tagging:
-        print('Forced tagging...may be some time')
+        logging.info('Forced tagging...may be some time')
         UserTagger().tag(user.id)
         user.refresh_from_db()
         articles = user.all_articles()
@@ -187,6 +188,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
             success, result = tag_user(str(arg), True)
-            print(success, result)
+            logging.info(success, result)
     else:
         UserTagger().tag_job(True)

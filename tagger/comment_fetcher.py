@@ -1,7 +1,8 @@
 import os
 import traceback
-
+import logging
 import requests
+
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
 
@@ -27,7 +28,7 @@ class CommentFetcher:
 
     def _fetch(self, parent, top_parent, comment_ids):
         hn_id = parent.hn_id if parent else top_parent.hn_id
-        print('Fetching %s children for %s' % (str(len(comment_ids)), str(hn_id)))
+        logging.info('Fetching %s children for %s' % (str(len(comment_ids)), str(hn_id)))
         for cid in comment_ids:
             try:
                 article_info = requests.get(ITEM_URL % cid).json()
@@ -48,10 +49,10 @@ class CommentFetcher:
                 )
 
                 if created:
-                    print('Created item: ' + str(cid))
+                    logging.info('Created item: ' + str(cid))
                     self.STAT_ITEM_CREATED += 1
                 else:
-                    print('Existing item: ' + str(cid))
+                    logging.info('Existing item: ' + str(cid))
                 kids = article_info.get('kids')
                 if kids:
                     self._fetch(item, top_parent, kids)

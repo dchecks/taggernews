@@ -49,7 +49,7 @@ class ArticleFetcher:
         pass
 
     def print_stats(self):
-        print('------STATS------\n'
+        logging.info('------STATS------\n'
               'STAT_TOTAL_REQUESTED = %s\n'
               'STAT_HN_REQUEST = %s\n'
               'STAT_ARTICLE_FROM_DB = %s\n'
@@ -92,7 +92,7 @@ class ArticleFetcher:
             timer = time.time()
             self.STAT_TOTAL_REQUESTED += 1
             ret_list.append(self.fetch_me(aid))
-            print('Fetched %s (%ss)' % (str(aid), str(round(time.time() - timer, 2))))
+            logging.info('Fetched %s (%ss)' % (str(aid), str(round(time.time() - timer, 2))))
 
             if self.STAT_TOTAL_REQUESTED % 100 == 0:
                 self.print_stats()
@@ -139,7 +139,7 @@ class ArticleFetcher:
             article_info = requests.get(ITEM_URL % article_id).json()
             self.STAT_HN_REQUEST += 1
         except Exception as e:
-            print('Failed to get from hn api, backing off for 15s', e)
+            logging.info('Failed to get from hn api, backing off for 15s', e)
             time.sleep(15)
             article_info = None
             self.STAT_HN_BACKOFF += 1
@@ -164,7 +164,7 @@ class ArticleFetcher:
             # Recurse to get the top_parent
             parent_id = article_info.get('parent')
             if parent_id is None:
-                print('Failed to find the top parent for ' + str(article_id))
+                logging.info('Failed to find the top parent for ' + str(article_id))
                 self.STAT_ITEM_NO_TOP_PARENT += 1
                 top_parent = None
                 parent_item = None
@@ -172,7 +172,7 @@ class ArticleFetcher:
                 parent_item = self.fetch_me(parent_id)
                 # When an article is returned, we know we've hit the top
                 if isinstance(parent_item, Article):
-                    # print('Found top parent' + str(parent_id))
+                    # logging.info('Found top parent' + str(parent_id))
                     top_parent = parent_item
                     parent_item = None
                 else:
@@ -202,15 +202,15 @@ class ArticleFetcher:
                 try:
                     item = Article.objects.get(hn_id=article_id)
                 except Exception as e2:
-                    print('Failed to get article after integrity error')
-                    print(e2)
+                    logging.info('Failed to get article after integrity error')
+                    logging.info(e2)
                     item = None
         else:
             self.STAT_ARTICLE_FROM_HN += 1
             url = article_info.get('url')
             if (not url) or url.startswith(
                     tuple(URL_EXCLUSIONS)):  # hack for goose as it doesnt like some unicode characters,
-                # print("No url for article " + str(article_id))
+                # logging.info("No url for article " + str(article_id))
                 self.STAT_ARTICLE_NO_URL += 1
                 state = 2
             else:
@@ -238,8 +238,8 @@ class ArticleFetcher:
                     self.STAT_INTEGRITY_ERROR += 1
                     item = Article.objects.get(hn_id=article_id)
                 except Exception as e2:
-                    print('Failed to get article after integrity error')
-                    print(e2)
+                    logging.info('Failed to get article after integrity error')
+                    logging.info(e2)
                     item = None
 
         return item
@@ -276,8 +276,8 @@ class ArticleFetcher:
                     article.save()
                 except Exception as e:
                     self.STAT_GOOSE_FAILURE += 1
-                    print("Failed to save prediction input to db for " + str(article.hn_id))
-                    print(e)
+                    logging.info("Failed to save prediction input to db for " + str(article.hn_id))
+                    logging.info(e)
                     article.state = 5
                     article.articletext = None
                     article.save()

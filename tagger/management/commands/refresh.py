@@ -1,10 +1,11 @@
 from __future__ import print_function
 
 import traceback
-
 import requests
-from django.core.management.base import BaseCommand
 import os
+import logging
+
+from django.core.management.base import BaseCommand
 
 from django.core.wsgi import get_wsgi_application
 from whitenoise.django import DjangoWhiteNoise
@@ -25,16 +26,16 @@ arty = ArticleFetcher()
 commy = CommentFetcher()
 
 def update_rank(top_article_ids):
-    print('Updating rank...')
+    logging.info('Updating rank...')
     # Updates all to not ranked
     Article.objects.exclude(rank__isnull=True).update(rank=None)
-    print('New order:')
+    logging.info('New order:')
     for i, article_id in enumerate(top_article_ids):
         try:
             arty = Article.objects.get(hn_id=article_id)
             arty.rank = i
             arty.save()
-            print(str(i) + ': ' + str(article_id))
+            logging.info(str(i) + ': ' + str(article_id))
 
             submitter = arty.submitter
             # if user on front page isn't tagged yet prioritise them
@@ -43,17 +44,17 @@ def update_rank(top_article_ids):
                 submitter.save()
 
         except Article.DoesNotExist:
-            print('Skipping ' + str(i) + ': ' + str(article_id))
+            logging.info('Skipping ' + str(i) + ': ' + str(article_id))
 
 
 def collect_comments(article_dict):
-    print('Collecting kids...')
+    logging.info('Collecting kids...')
     for key in article_dict.keys():
         arty.fetch(article_dict[key])
 
 
 def update_scores(top_article_ids):
-    print('Updating scores')
+    logging.info('Updating scores')
     for article_id in top_article_ids:
         try:
             article_info = requests.get(ITEM_URL % article_id).json()
@@ -62,7 +63,7 @@ def update_scores(top_article_ids):
             article.number_of_comments = article_info.get('descendants')
             article.save()
         except Exception as e:
-            print('Failed to save scores for article ' + str(article_id))
+            logging.info('Failed to save scores for article ' + str(article_id))
             traceback.print_exc(e)
 
 
@@ -70,12 +71,12 @@ def refresh_top():
     top_article_ids = requests.get(TOP_ARTICLES_URL).json()[:LIMIT_TOP_RESULTS]
 
     arty.fetch(top_article_ids)
-    print('Fetched: %s' % (len(top_article_ids)))
+    logging.info('Fetched: %s' % (len(top_article_ids)))
 
     update_rank(top_article_ids)
     update_scores(top_article_ids)
 
-    print('Done')
+    logging.info('Done')
 
 
 class Command(BaseCommand):

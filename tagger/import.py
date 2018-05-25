@@ -1,6 +1,7 @@
 import os
 import time
 import ijson
+import logging
 
 from django.db import connection
 from django.core.wsgi import get_wsgi_application
@@ -32,7 +33,7 @@ class Importer:
         pass
 
     def print_stats(self):
-        print('%s (+%s): Scanned %s items, created %s (+%s), skipped %s (+%s), new users %s (+%s), errors %s (+%s)' %
+        logging.info('%s (+%s): Scanned %s items, created %s (+%s), skipped %s (+%s), new users %s (+%s), errors %s (+%s)' %
               (time.time() - self.timer, time.time() - self.d_time,
                self.create_count + self.skip_count,
                self.create_count, self.create_count - self.d_create,
@@ -95,9 +96,9 @@ class Importer:
                         cursor.execute(cmd)
                         self.create_count += 1
                     except Exception as e:
-                        print('Exception, hn_id: ' + str(hn_id))
-                        print(e)
-                        print('last cmd: ' + cmd)
+                        logging.info('Exception, hn_id: ' + str(hn_id))
+                        logging.info(e)
+                        logging.info('last cmd: ' + cmd)
                         self.print_stats()
 
     def import_articles(self, data_file):
@@ -138,10 +139,10 @@ class Importer:
                             cursor.execute(cmd, (hn_id, title, str(state), url, score, number_of_comments, submitter, timestamp))
                             self.create_count += 1
                         except Exception as e:
-                            print('Exception, hn_id: ' + str(hn_id))
-                            print(e)
+                            logging.info('Exception, hn_id: ' + str(hn_id))
+                            logging.info(e)
                             if cmd:
-                                print('last cmd: ' + cmd)
+                                logging.info('last cmd: ' + cmd)
                             self.print_stats()
 
     def scan(self, file, hn_id):
@@ -149,18 +150,18 @@ class Importer:
         hn_id = str(hn_id)
         counter = 0
         print_count = 0
-        print('Scanning for ' + str(hn_id))
+        logging.info('Scanning for ' + str(hn_id))
         for outerItem in ijson.items(file, "item"):
             for hit in outerItem['hits']:
                 if hn_id == hit['objectID']:
                     print_count = 2
                 if print_count > 0:
-                    print(hit['objectID'])
-                    print(hit)
+                    logging.info(hit['objectID'])
+                    logging.info(hit)
                     print_count -= 1
                 counter += 1
                 if counter % 10000 == 0:
-                    print('Progress: ' + str(counter))
+                    logging.info('Progress: ' + str(counter))
 
     def fetch_imported_articles(self):
         arty = ArticleFetcher()
@@ -175,7 +176,7 @@ class Importer:
                 article.state = 6
                 article.save()
             arty.fetch(article_ids)
-            print('Batch complete')
+            logging.info('Batch complete')
 
 portly = Importer()
 # with open('../resources/HNStoriesAll.json', buffering=4096000) as data_file:
