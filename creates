@@ -40,6 +40,9 @@ create table tagger.tagger_user (
     last_parsed DateTime,
     priority int,
     total_items int,
+    karma int,
+    born Datetime,
+    bio varchar(2000),
     primary key (id)
 );
 

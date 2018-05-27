@@ -1,3 +1,4 @@
+import logging
 import re
 import sys
 import traceback
@@ -5,9 +6,9 @@ import traceback
 import requests
 import time
 from django.db import OperationalError
-from goose import Goose
+from goose3 import Goose
 from django.utils import timezone
-from models import Article, User, Item, ArticleText
+from tagger.models import Article, User, Item, ArticleText
 
 ITEM_URL = 'https://hacker-news.firebaseio.com/v0/item/%s.json'
 URL_EXCLUSIONS = ["https://arxiv", "http://arxiv"]

@@ -54,7 +54,6 @@ class User(models.Model):
     _article_cache = None
     _item_cache = None
 
-
     def __str__(self):
         return 'User ' + self.id \
                + ",\n state=" + str(self.state)\
