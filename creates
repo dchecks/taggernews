@@ -8,10 +8,10 @@ create user 'tagger_client'@'10.0.0.%' identified by 'probablyNotTheRealPassword
 grant insert, select, update on tagger.* to 'tagger_client'@'10.0.0.%';
 FLUSH PRIVILEGES;
 
-create table tagger.tagger_articletext (
+create table tagger.tagger_article_text (
     article_id integer not null,
     parsed DateTime not null,
-    article_text mediumtext not null,
+    text mediumtext not null,
     primary key (article_id)
 );
 

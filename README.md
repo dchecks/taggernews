@@ -30,9 +30,11 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser
 ```
-If requirements install fails due to psycopg2 try:
-centos: sudo yum install python-devel postgresql-devel
-From :https://stackoverflow.com/questions/5420789/how-to-install-psycopg2-with-pip-on-python
+If requirements install fails due to psycopg2 (on centos7) try:
+```
+sudo yum install python-devel postgresql-devel
+```
+Credit: https://stackoverflow.com/questions/5420789/how-to-install-psycopg2-with-pip-on-python
 
 ##### MySQL
 The server setup is now using mysql, a simple schema creation script can be found in the 'creates' file in the root directory.

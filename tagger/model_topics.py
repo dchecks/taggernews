@@ -29,13 +29,15 @@ if __name__ == "__main__":
 # Needs to be imported after django
 from tagger.models import Article
 
+nltk.download('stopwords')
 STOPWORDS = set(stopwords.words('english'))
 IMPORT_LIMIT = 100
 COMMON_WORD_LIMIT = 10000
-DICTIONARY_NAME = "./dictionaries/hn_dictionary"
-MODEL_NAME = "./ml_models/generated/model"
+DICTIONARY_NAME = ".././dictionaries/hn_dictionary"
+MODEL_NAME = ".././ml_models/generated/model"
 NUM_TOPICS = 100
 NUM_PASSES = 10
+
 
 def all_articletext():
     """Returns all text for articles in the database up to the limit"""
@@ -50,6 +52,9 @@ def all_articletext():
 # Load data
 logging.info("Reading articles...")
 articletexts = all_articletext()
+
+if not len(articletexts):
+    raise RuntimeError("Need articles in the db to run training data on, run fetch_training_data.py first")
 
 # Convert to list of tokens
 articletexts = [a.lower() for a in articletexts]
@@ -80,9 +85,6 @@ dictionary.save(dict_fname)
 
 # Create corpus for topic model training
 corpus = [dictionary.doc2bow(doc) for doc in token_docs]
-
-# model_hi = ml_models.LdaMulticore(
-#     corpus, id2word=dictionary, num_topics=100, passes=4, workers=2)
 
 # Train LDA
 model_hi = models.ldamodel.LdaModel(corpus, id2word=dictionary, num_topics=NUM_TOPICS, passes=NUM_PASSES)

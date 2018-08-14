@@ -1,3 +1,4 @@
+pandas
 goose3
 cachetools
 sseclient

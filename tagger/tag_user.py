@@ -123,7 +123,26 @@ class UserTagger:
                 time.sleep(5)
 
 
+def _fetch_user_remote(username):
+    try:
+        user_info = requests.get(USER_URL + username + '.json').json()
+        if not user_info:
+            logging.info('User doesn\'t exist, ' + username)
+            return None
+        logging.info('Creating user, ' + username)
+        user = User(id=username, state=0, last_parsed=None)
+        user.save()
+        return user
+    except Exception:
+        logging.error("Unable to contact api")
+        return None
+
+
 def fetch_user(username):
+    """ Locally and then remotely attempts to load the given user
+    :param username:
+    :return: user object or none if not found
+    """
     if not username:
         logging.info('No username given')
         return None
@@ -133,21 +152,19 @@ def fetch_user(username):
 
     try:
         user = User.objects.filter(id=username).prefetch_related('article_set').prefetch_related('item_set').first()
-        threshold = timezone.now() - USER_REFRESH_DELTA
-        if user.last_parsed is not None and user.last_parsed < threshold:
-            logging.info('User cache expired, ' + username)
-            user.state = 11
-        elif user.state == 10:
-            logging.info('Using cached version of ' + username)
+        if not user:
+            user = _fetch_user_remote(username)
+        else:
+            threshold = timezone.now() - USER_REFRESH_DELTA
+            if user.last_parsed is not None and user.last_parsed < threshold:
+                logging.info('User cache expired, ' + username)
+                user.state = 11
+            elif user.state == 10:
+                logging.info('Using cached version of ' + username)
+            user.save()
     except User.DoesNotExist:
-        user_info = requests.get(USER_URL + username + '.json').json()
-        if not user_info:
-            logging.info('User doesn\'t exist, ' + username)
-            return None
-        logging.info('Creating user, ' + username)
-        user = User(id=username, state=0, last_parsed=None)
+        user = _fetch_user_remote(username)
 
-    user.save()
     return user
 
 

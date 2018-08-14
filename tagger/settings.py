@@ -35,14 +35,14 @@ ALLOWED_HOSTS = ['0.0.0.0', 'localhost']
 # Application definition
 
 INSTALLED_APPS = [
+    'tagger',
+    'django.contrib.contenttypes',
     'django.contrib.admin',
     'django.contrib.auth',
-    'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'debug_toolbar',
-    'tagger'
+    'debug_toolbar'
 ]
 
 MIDDLEWARE = [

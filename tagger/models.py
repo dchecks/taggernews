@@ -1,17 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-
+from urllib.parse import urlparse
 from django.db import models
-
-try:
-    from urllib import parse
-except ImportError:
-    from urlparse import urlparse as parse
 
 import datetime
 
-
-# Create your ml_models here.
 
 class Tag(models.Model):
     id = models.AutoField(primary_key=True)
@@ -76,7 +69,7 @@ class User(models.Model):
     def all_articles(self):
         """Returns all articles this user has interacted with"""
         top_parents = map(func_top_parent, self.item_set.all())
-        return filter(None, list(self.article_set.all()) + top_parents)
+        return list(filter(None, list(self.article_set.all()) + list(top_parents)))
 
     def get_tags(self):
         tags = {}
@@ -133,7 +126,7 @@ class Article(models.Model):
         if not self.article_url:
             return None
         else:
-            netloc = parse(self.get_absolute_url()).netloc
+            netloc = urlparse(self.get_absolute_url()).netloc
             path = netloc.split(".")
             try:
                 return path[-2] + "." + path[-1]
@@ -158,3 +151,6 @@ class ArticleText(models.Model):
     article = models.OneToOneField(Article, on_delete=models.CASCADE, primary_key=True)
     parsed = models.DateTimeField()
     text = models.TextField(null=True)
+
+    class Meta:
+        db_table = 'tagger.article_text'

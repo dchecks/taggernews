@@ -7,7 +7,7 @@
     <tr class='athing'>
         <td valign="top">user:</td>
         <td timestamp="{{ user.born|date:'U' }}">
-            <a href="user?id={{ user.id }}" class="hnuser">{{ user.id }}</a>
+            <a href="?id={{ user.id }}" class="hnuser">{{ user.id }}</a>
         </td>
     </tr>
     <tr>
@@ -32,6 +32,16 @@
         <td></td>
         <td><a href="https://news.ycombinator.com/favorites?id={{ user.id }}"><u>favorites</u></a></td>
     </tr>
+    <tr>
+        <td>topics:</td>
+        <td></td>
+    </tr>
+{% for tag in tags %}
+    <tr>
+        <td></td>
+        <td><span class='tag'>" + tag. + "</span> " + element[1] + "<br /></td></td>
+    </tr>
+{% endfor %}
 </table>
 <br>
 <br>

@@ -2,12 +2,13 @@
 from __future__ import unicode_literals
 
 import logging
+from operator import attrgetter
+
 from django.db.models import Count
-from django.http import JsonResponse
 from django.shortcuts import render
 
 from tagger.models import Article, Tag
-from tagger.tag_user import tag_user, fetch_user
+from tagger.tag_user import fetch_user
 
 
 def news(request, page="1"):
@@ -31,18 +32,24 @@ def news(request, page="1"):
     return render(request, 'article_list.html', context)
 
 
-def user(request, username):
+def user(request):
+    context = {}
+    uid = request.GET.get('id', None)
 
-    user = fetch_user(username)
+    if uid:
+        user = fetch_user(uid)
+        if user:
+            articles = user.all_articles()
+            articles.sort(key=attrgetter("timestamp"))
 
-    articles = user.all_articles()
-    articles.sort()  # TODO chrono comparator
+            # Converts to a list of tuples, then sorts by tuple at index 1
+            tags = sorted(user.get_tags().items(), key=lambda tup: tup[1])
 
-    context = {
-        "user": user,
-        "tags": user.get_tags(),
-        "articles": articles,
-    }
+            context = {
+                "user": user,
+                "articles": articles,
+                "tags": tags,
+            }
     return render(request, 'user.html', context)
 
 
@@ -77,8 +84,3 @@ def all_tags(request):
 
     return render(request, 'tag_list.html', context)
 
-
-def user(request):
-    username = request.GET.get('id', '')
-    code, result = tag_user(username)
-    return JsonResponse(result, status=code)
