@@ -1,3 +1,11 @@
+/*
+TODO Popup will go to the first instance of a name, not necessarily the hover
+TODO Caching
+TODO Popup loading bar
+TODO Pretify box
+TODO Graph bars for tags
+*/
+
 var users = [];
 
 function hideTooltip() {
@@ -33,7 +41,7 @@ function popup(data, elementId) {
     tooltip.appendTo($("#" + elementId));
 }
 
- function fail(data, elementId){
+ function showMessage(message, elementId){
     var tooltip = $("<div id='tooltip' class='tooltip'>" + message + "</div>");
     tooltip.appendTo($("#" + elementId));
 }
@@ -42,21 +50,20 @@ function showTooltip(elementId){
     var user = elementId.substr(7);
     console.log("Loading tooltip for " + user);
 
+
     $.ajax({
       cached: true,
       dataType: "json",
-      url: "/user?id=" + user,
+      url: "/user/?id=" + user,
       statusCode:{
         200: function(data) {
             popup(data, elementId);
         },
         204: function() {
-            message = 'No tags for user';
-            fail(message, elementId);
+            showMessage('No tags for user', elementId);
         },
         404: function(data) {
-            message = data['message'];
-            fail(message, elementId);
+            showMessage(data['message'], elementId);
         }
       }
     });
@@ -67,4 +74,11 @@ function showTooltip(elementId){
 $(".hnuser").hover(function(e) {
     tooltipTimeout = setTimeout(function() { showTooltip(e.target.id) }, 1000);},
     hideTooltip);
+
+$body = $("body");
+
+//$(document).on({
+//    ajaxStart: function() { $body.addClass("loading");    },
+//     ajaxStop: function() { $body.removeClass("loading"); }
+//});
 

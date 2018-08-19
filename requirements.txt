@@ -16,13 +16,11 @@ dj-database-url==0.4.1
 Django==1.11.1
 django-debug-toolbar==1.8
 enum34==1.1.6
-gunicorn==19.6.0
 isort==4.2.5
 jieba==0.38
 lazy-object-proxy==1.3.1
 lxml==3.7.3
 mccabe==0.6.1
-nltk==3.2.2
 olefile==0.44
 packaging==16.8
 Pillow==4.1.1
@@ -33,7 +31,6 @@ requests==2.14.2
 singledispatch==3.4.0.3
 six==1.10.0
 sqlparse==0.2.3
-whitenoise==3.2
 wrapt==1.10.10
 gensim==2.1.0
 nltk==3.2.2

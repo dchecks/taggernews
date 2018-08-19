@@ -1,14 +1,14 @@
 version: '2'
 services:
-  # db:
-  #   build: ./db
-  #   networks:
-  #     - main
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - db_data:/opt/taggernews/mysql_data
-  #   restart: always
+  db:
+    build: ./db
+    networks:
+      - main
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/opt/taggernews/mysql_data
+    restart: always
   web:
     build: ./web
     networks:
@@ -17,8 +17,8 @@ services:
       - ./web/tagger:/usr/src/app
     ports:
       - "8000:8000"
-    # depends_on:
-    #   - db
+    depends_on:
+      - db
 volumes:
   db_data:
   web:
