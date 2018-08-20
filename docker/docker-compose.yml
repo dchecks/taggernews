@@ -19,6 +19,14 @@ services:
       - "8000:8000"
     depends_on:
       - db
+  stream:
+    build: ./stream
+    networks:
+      - main
+    volumes:
+      - ./stream/stream:/usr/src/app
+    depends_on:
+      - db
 volumes:
   db_data:
   web:
