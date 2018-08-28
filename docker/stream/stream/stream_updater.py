@@ -1,33 +1,30 @@
-import os
 import logging
-
-from datetime import datetime
-from django.core.wsgi import get_wsgi_application
-
 import firebase
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
-application = get_wsgi_application()
+from datetime import datetime
 
-# from article_fetcher import ArticleFetcher
+
+import db
+from article_fetcher import ArticleFetcher
 
 COMMENT_URL = "https://hacker-news.firebaseio.com/v0/updates.json"
 
 
 class StreamUpdater:
-    # arty = ArticleFetcher()
 
     def __init__(self):
-        pass
+        Session = db.session_factory()
+        self.arty = ArticleFetcher(Session())
 
     def add(self, stream_text):
         message = stream_text[1]
         logging.info(datetime.now())
         logging.info('Data: ' + str(message))
         items = message['data']['items']
-        # items = self.arty.fetch(items)
+        items = self.arty.fetch_list(items)
         logging.info('Completed fetch of ' + str(len(items)))
 
-
+print("Starting StreamUpdater")
 updater = StreamUpdater()
 comment_sub = firebase.subscriber(COMMENT_URL, updater.add)
 comment_sub.start()
+print("StreamUpdater waiting for push")

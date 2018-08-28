@@ -6,7 +6,7 @@ WORKDIR /usr/src/app
 COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./stream /usr/src/app
+COPY ./stream /usr/src/app/stream
 
 RUN apt-get update && apt-get install -y \
 		gcc \
@@ -14,4 +14,4 @@ RUN apt-get update && apt-get install -y \
 		mysql-client default-libmysqlclient-dev \
 	--no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["python", "stream_updater.py"]
+ENTRYPOINT ["python", "./stream/stream_updater.py"]
