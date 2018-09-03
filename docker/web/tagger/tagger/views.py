@@ -6,8 +6,12 @@ from operator import attrgetter
 
 from django.db.models import Count
 from django.shortcuts import render
+from sqlalchemy import desc
 
+from tagger import fetch_user
 from tagger.models import Article, Tag
+
+from tagger import Session
 
 
 def news(request, page="1"):
@@ -15,11 +19,10 @@ def news(request, page="1"):
 
     start = (page_number - 1) * 30
     end = page_number * 30
-    articles = Article.objects\
-                        .all()\
-                        .exclude(rank__isnull=True)\
-                        .order_by('rank')\
-                        .prefetch_related('tags', 'submitter')[start:end]
+    ses = Session()
+
+    articles = ses.query(Article).filter(Article.rank != None).order_by(desc('rank'))[start:end]
+                        # .prefetch_related('tags', 'submitter')
 
     context = {
         "articles": articles,
@@ -27,17 +30,18 @@ def news(request, page="1"):
         "offset": (page_number - 1) * 30,
         "base_path": "/news/"
     }
-
-    return render(request, 'article_list.html', context)
+    r = render(request, 'article_list.html', context)
+    ses.commit()
+    return r
 
 
 def user(request):
     context = {}
     uid = request.GET.get('id', None)
 
+    ses = Session()
     if uid:
-        user = None
-        # user = fetch_user(uid)
+        user = fetch_user(uid)
         if user:
             articles = user.all_articles()
             articles.sort(key=attrgetter("timestamp"))
@@ -50,7 +54,9 @@ def user(request):
                 "articles": articles,
                 "tags": tags,
             }
-    return render(request, 'user.html', context)
+    r = render(request, 'user.html', context)
+    ses.commit()
+    return r
 
 
 def by_tag(request, tag_string, page="1"):
@@ -62,9 +68,11 @@ def by_tag(request, tag_string, page="1"):
 
     logging.info(tag_names)
 
-    tags = Tag.objects.filter(lowercase_name__in=tag_names)
+    ses = Session()
+    tags = ses.query(Tag).filter(Tag.lowercase_name in tag_names).all()
 
-    articles = Article.objects.filter(tags__in=tags).order_by('rank').prefetch_related('tags')[start:end]
+    articles = ses.query(Article).filter(Article.tags in tags).order_by('rank')[start:end]
+    # .prefetch_related('tags')
 
     context = {
         "articles": articles,
@@ -72,11 +80,17 @@ def by_tag(request, tag_string, page="1"):
         "offset": (page_number - 1) * 30,
         "base_path": "/tags/" + tag_string + "/"
     }
-    return render(request, 'article_list.html', context)
+
+    r = render(request, 'article_list.html', context)
+    ses.commit()
+    return r
 
 
 def all_tags(request):
-    tags = Tag.objects.annotate(article_count=Count('article')).order_by('-article_count')
+    # TODO Re-enable this
+    tags = []
+    # ses = Session()
+    # tags = ses.query(Tag).annotate(article_count=Count('article')).order_by('-article_count')
 
     context = {
         "tags": tags

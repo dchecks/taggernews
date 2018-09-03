@@ -1,15 +1,25 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from urllib.parse import urlparse
-from django.db import models
 
 import datetime
 
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Boolean, Text
+from datetime import datetime
+from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy_utils import URLType
 
-class Tag(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=300)
-    lowercase_name = models.CharField(max_length=300)
+Base = declarative_base()
+
+
+class Tag(Base):
+    __tablename__ = "tagger_tag"
+
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    name = Column(String(length=300))
+    lowercase_name = Column(String(length=300))
 
     def __unicode__(self):
         return self.name
@@ -18,15 +28,17 @@ class Tag(models.Model):
         return "/tags/" + self.name.lower()
 
 
-def func_top_parent(item):
-    if hasattr(item, 'top_parent'):
-        return item.top_parent
-    else:
-        return None
+article_tags_table = Table('tagger_article_tags', Base.metadata,
+                           Column('article_id', Integer, ForeignKey('tagger_article.hn_id')),
+                           Column('tag_id', Integer, ForeignKey('tagger_tag.id'))
+                           )
 
 
-class User(models.Model):
-    id = models.CharField(primary_key=True, max_length=15)
+class User(Base):
+    __tablename__ = "tagger_user"
+    refresh_delta = datetime.timedelta(days=100)
+
+    id = Column(String(15), primary_key=True)
 
     # 0 Fresh
     # 1 Not found on HN
@@ -35,14 +47,17 @@ class User(models.Model):
     # 11 previously tagged, tag again
     # 13 tagging
     # 99 opt_out
-    state = models.IntegerField(null=True, default=0)
-    last_parsed = models.DateTimeField()
-    priority = models.IntegerField()
-    total_items = models.IntegerField(default=0)
+    state = Column(Integer(), default=0)
+    last_parsed = Column(DateTime())
+    priority = Column(Integer())
+    total_items = Column(Integer(), default=0)
 
-    karma = models.IntegerField(null=True)
-    born = models.DateTimeField()
-    bio = models.CharField(max_length=2000)
+    karma = Column(Integer())
+    born = Column(DateTime())
+    bio = Column(String(2000))
+
+    items = relationship("Item")
+    articles = relationship("Article")
 
     _article_cache = None
     _item_cache = None
@@ -83,17 +98,25 @@ class User(models.Model):
 
 
 # db_constraint=False added for importer
-class Item(models.Model):
-    hn_id = models.IntegerField(primary_key=True)
-    submitter = models.ForeignKey("User", db_column='submitter', on_delete=models.PROTECT)
-    type = models.CharField(max_length=10)
-    parent = models.ForeignKey("Item", db_column='parent', on_delete=models.PROTECT)
-    top_parent = models.ForeignKey("Article", db_column='top_parent', on_delete=models.PROTECT)
-    imported = models.BooleanField(default=False)
+class Item(Base):
+    __tablename__ = "tagger_item"
+    hn_id = Column(Integer(), primary_key=True)
+
+    type = Column(String(10))
+    imported = Column(Boolean(), default=False)
+
+    submitter_id = Column(String(15), ForeignKey("tagger_user.id"))
+    parent_id = Column(Integer, ForeignKey('tagger_item.hn_id'))
+    top_parent_id = Column(Integer, ForeignKey('tagger_article.hn_id'))
+
+    submitter = relationship("User", back_populates="items")
+    parent = relationship("Item", remote_side=[hn_id])
+    top_parent = relationship("Article")
 
 
-class Article(models.Model):
-    hn_id = models.IntegerField(primary_key=True)
+class Article(Base):
+    __tablename__ = "tagger_article"
+    hn_id = Column(Integer(), primary_key=True)
 
     # 0 successfully parsed,
     # 1 hn id not found,
@@ -106,18 +129,22 @@ class Article(models.Model):
     # 11 processed for tagging, no tags assigned
     # 12 tagging error
     # 13 selected for tagging
-    state = models.IntegerField(null=False)
-    parsed = models.DateTimeField()
-    title = models.CharField(max_length=2000)
-    article_url = models.URLField(max_length=2000, null=True)
-    score = models.IntegerField()
-    number_of_comments = models.IntegerField(null=True)
-    submitter = models.ForeignKey("User", db_column='submitter', on_delete=models.PROTECT)
-    timestamp = models.IntegerField()
-    tags = models.ManyToManyField(Tag, blank=True)
-    rank = models.IntegerField(null=True)
-    tagged = models.BooleanField(default=False)
-    imported = models.BooleanField(default=False)
+    state = Column(Integer(), nullable=False)
+    parsed = Column(DateTime())
+    title = Column(String(2000))
+    article_url = Column(URLType(), nullable=True)
+    score = Column(Integer())
+    number_of_comments = Column(Integer(), nullable=True)
+    timestamp = Column(Integer())
+    rank = Column(Integer(), nullable=True)
+    tagged = Column(Boolean(), default=False)
+    imported = Column(Boolean(), default=False)
+
+    submitter_id = Column(String(15), ForeignKey("tagger_user.id"))
+    submitter = relationship("User", back_populates="articles")
+
+    text = relationship("ArticleText", uselist=False, back_populates="article")
+    tags = relationship("Tag", secondary=article_tags_table)
 
     def __unicode__(self):
         return self.title
@@ -147,10 +174,18 @@ class Article(models.Model):
         return self.article_url or "https://news.ycombinator.com/item?id=" + str(self.hn_id)
 
 
-class ArticleText(models.Model):
-    article = models.OneToOneField(Article, on_delete=models.CASCADE, primary_key=True)
-    parsed = models.DateTimeField()
-    text = models.TextField(null=True)
+class ArticleText(Base):
+    __tablename__ = 'tagger_article_text'
 
-    class Meta:
-        db_table = 'tagger.article_text'
+    article_id = Column(Integer, ForeignKey("tagger_article.hn_id"), primary_key=True)
+    article = relationship("Article", back_populates="text")
+
+    parsed = Column(DateTime())
+    text = Column(Text(), nullable=True)
+
+
+def func_top_parent(item):
+    if hasattr(item, 'top_parent'):
+        return item.top_parent
+    else:
+        return None

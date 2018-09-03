@@ -36,6 +36,8 @@ article_tags_table = Table('tagger_article_tags', Base.metadata,
 
 class User(Base):
     __tablename__ = "tagger_user"
+    refresh_delta = datetime.timedelta(days=100)
+
     id = Column(String(15), primary_key=True)
 
     # 0 Fresh

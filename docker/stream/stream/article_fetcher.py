@@ -8,7 +8,8 @@ import time
 from datetime import datetime
 from goose3 import Goose
 
-from stream.models import Article, User, Item, ArticleText
+from db import Session
+from models import Article, User, Item, ArticleText
 
 ITEM_URL = 'https://hacker-news.firebaseio.com/v0/item/%s.json'
 URL_EXCLUSIONS = ["https://arxiv", "http://arxiv"]
@@ -49,8 +50,8 @@ class ArticleFetcher:
     STAT_GOOSE_FETCH = 0
     STAT_GOOSE_FAILURE = 0
 
-    def __init__(self, session):
-        self.session = session
+    def __init__(self):
+        pass
 
     def print_stats(self):
         logging.info('------STATS------\n'
@@ -87,7 +88,7 @@ class ArticleFetcher:
                                                       self.STAT_GOOSE_FAILURE))
 
     def db_query_article_by_id(self, hn_id):
-        return self.session.query(Article).filter(Article.hn_id == hn_id).first()
+        return Session().query(Article).filter(Article.hn_id == hn_id).first()
 
     def fetch_list(self, hn_ids):
         """
@@ -100,14 +101,14 @@ class ArticleFetcher:
             self.STAT_TOTAL_REQUESTED += 1
 
             article = self.fetch_item_or_article_by_id(aid)
-            self.session.add(article)
+            Session().add(article)
             ret_list.append(article)
             logging.info('Fetched %s (%ss)' % (str(aid), str(round(time.time() - timer, 2))))
 
             if self.STAT_TOTAL_REQUESTED % 100 == 0:
                 self.print_stats()
 
-        self.session.commit()
+        Session().commit()
         return ret_list
 
     def fetch_item_or_article_by_id(self, hn_id):
@@ -134,19 +135,19 @@ class ArticleFetcher:
                                                   parsed=datetime.utcnow())
                         article.articletext = articletext
                         article.state = state
-                        self.session.add(articletext)
+                        Session().add(articletext)
                     else:
                         self.STAT_GOOSE_FAILURE += 1
                         article.state = state
 
-                    self.session.add(article)
+                    Session().add(article)
                 except Exception as e:
                     self.STAT_GOOSE_FAILURE += 1
                     logging.info("Failed to save prediction input to db for " + str(article.hn_id))
                     logging.info(e)
                     article.state = 5
                     article.articletext = None
-                    self.session.add(article)
+                    Session().add(article)
 
             return article
 
@@ -176,7 +177,7 @@ class ArticleFetcher:
             self.STAT_ARTICLE_FROM_DB += 1
         else:
             # TODO Remove this hackery when article subclasses item
-            item = self.session.query(Item).filter(Item.hn_id == hn_id).first()
+            item = Session().query(Item).filter(Item.hn_id == hn_id).first()
             if item:
                 self.STAT_ITEM_FROM_DB += 1
         return item
@@ -222,7 +223,7 @@ class ArticleFetcher:
         if not title:
             title = ''
 
-        article = self.session.query(Article).filter(Article.hn_id == hn_id).first()
+        article = Session().query(Article).filter(Article.hn_id == hn_id).first()
         if not article:
             submitter_id = article_info.get('by')
             submitter = self.query_or_create_user(submitter_id)
@@ -238,7 +239,7 @@ class ArticleFetcher:
                 submitter=submitter,
                 timestamp=article_info.get('time')
             )
-            self.session.add(article)
+            Session().add(article)
             self.STAT_ARTICLE_CREATED += 1
 
         return article
@@ -268,7 +269,7 @@ class ArticleFetcher:
                 # the top_parent is at least 1 grandparent away, or not found
                 top_parent = parent_item.top_parent
 
-        item = self.session.query(Item).filter(Item.hn_id == hn_id).first()
+        item = Session().query(Item).filter(Item.hn_id == hn_id).first()
         if not item:
             submitter_id = item_info.get('by')
             submitter = self.query_or_create_user(submitter_id)
@@ -280,7 +281,7 @@ class ArticleFetcher:
                 parent=parent_item,
                 top_parent=top_parent
             )
-            self.session.add(item)
+            Session().add(item)
             self.STAT_ITEM_CREATED += 1
 
         return item
@@ -289,9 +290,9 @@ class ArticleFetcher:
         if submitter_id is None:
             # Load the 'deleted user'
             submitter_id = 'deleted'
-        submitter = self.session.query(User).filter_by(id=submitter_id).first()
+        submitter = Session().query(User).filter_by(id=submitter_id).first()
         if not submitter:
             submitter = User(id=submitter_id)
-            self.session.add(submitter)
+            Session().add(submitter)
             self.STAT_USER_CREATED += 1
         return submitter

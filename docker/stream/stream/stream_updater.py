@@ -3,7 +3,6 @@ import firebase
 from datetime import datetime
 
 
-import db
 from article_fetcher import ArticleFetcher
 
 COMMENT_URL = "https://hacker-news.firebaseio.com/v0/updates.json"
@@ -12,8 +11,7 @@ COMMENT_URL = "https://hacker-news.firebaseio.com/v0/updates.json"
 class StreamUpdater:
 
     def __init__(self):
-        Session = db.session_factory()
-        self.arty = ArticleFetcher(Session())
+        self.arty = ArticleFetcher()
 
     def add(self, stream_text):
         message = stream_text[1]

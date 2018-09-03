@@ -14,4 +14,4 @@ RUN apt-get update && apt-get install -y \
 		mysql-client default-libmysqlclient-dev \
 	--no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["python", "./stream/stream_updater.py"]
+ENTRYPOINT ["python", "./stream_updater.py"]
