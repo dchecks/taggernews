@@ -2,11 +2,9 @@
 from __future__ import unicode_literals
 from urllib.parse import urlparse
 
-import datetime
-
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Boolean, Text
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import URLType
@@ -36,7 +34,7 @@ article_tags_table = Table('tagger_article_tags', Base.metadata,
 
 class User(Base):
     __tablename__ = "tagger_user"
-    refresh_delta = datetime.timedelta(days=100)
+    refresh_delta = timedelta(days=100)
 
     id = Column(String(15), primary_key=True)
 
@@ -161,8 +159,8 @@ class Article(Base):
                 return netloc
 
     def age(self):
-        now = datetime.datetime.now()
-        then = datetime.datetime.fromtimestamp(self.timestamp)
+        now = datetime.now()
+        then = datetime.fromtimestamp(self.timestamp)
         delta = now - then
         if delta.seconds < 60:
             return str(delta.seconds) + " seconds"
