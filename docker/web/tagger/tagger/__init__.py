@@ -33,7 +33,7 @@ def fetch_user(username):
         return None
 
     ses = Session()
-    user = ses.queay(User).filter(User.id == username).first()
+    user = ses.query(User).filter(User.id == username).first()
     if not user:
         user = fetch_user_remote(username)
     else:

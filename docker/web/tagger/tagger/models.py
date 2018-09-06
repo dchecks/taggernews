@@ -162,11 +162,15 @@ class Article(Base):
         now = datetime.now()
         then = datetime.fromtimestamp(self.timestamp)
         delta = now - then
+
         if delta.seconds < 60:
-            return str(delta.seconds) + " seconds"
-        if delta.seconds < 3600:
-            return str(delta.seconds / 60) + " minutes"
-        return str(delta.seconds / 3600) + " hours"
+            return "%s seconds" % delta.seconds
+        elif delta.seconds < 3600:
+            minute_delta = delta.seconds / 60
+            return "%.f minutes" % format(minute_delta, ".0f")
+        else:
+            hour_delta = delta.seconds / 3600
+            return "%s hours" % format(hour_delta, ".0f")
 
     def get_absolute_url(self):
         return self.article_url or "https://news.ycombinator.com/item?id=" + str(self.hn_id)
