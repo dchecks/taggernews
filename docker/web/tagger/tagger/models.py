@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import math
 from urllib.parse import urlparse
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -163,9 +164,7 @@ class Article(Base):
         then = datetime.fromtimestamp(self.timestamp)
         t_delta = now - then
         delta = t_delta.total_seconds()
-        if delta < 60:
-            return "%s seconds" % delta
-        elif delta < 3600:
+        if delta < 3600:
             minute_delta = delta / 60
             return "%s minutes" % format(minute_delta, ".0f")
         elif delta < 86400:
@@ -173,7 +172,8 @@ class Article(Base):
             return "%s hours" % format(hour_delta, ".0f")
         else:
             #Note, timedelta stores seconds and days, hence the odd cases
-            return "%s days" % t_delta.days
+            day_delta = t_delta.days + math.floor(t_delta.seconds / 43200)
+            return "%s days" % day_delta
 
     def get_absolute_url(self):
         return self.article_url or "https://news.ycombinator.com/item?id=" + str(self.hn_id)
