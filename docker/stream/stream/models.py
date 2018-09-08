@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import math
 from urllib.parse import urlparse
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -70,19 +71,19 @@ class User(Base):
 
         if not self._article_cache:
             self._article_cache = set()
-            for article in self.article_set.all():
+            for article in self.articles:
                 self._article_cache.add(article.hn_id)
         if not self._item_cache:
             self._item_cache = set()
-            for item in self.article_set.all():
+            for item in self.articles:
                 self._item_cache.add(item.hn_id)
 
         return hn_id in self._article_cache or hn_id in self._item_cache
 
     def all_articles(self):
         """Returns all articles this user has interacted with"""
-        top_parents = map(func_top_parent, self.item_set.all())
-        return list(filter(None, list(self.article_set.all()) + list(top_parents)))
+        top_parents = map(func_top_parent, self.items)
+        return list(filter(None, list(self.articles) + list(top_parents)))
 
     def get_tags(self):
         tags = {}
@@ -159,14 +160,20 @@ class Article(Base):
                 return netloc
 
     def age(self):
-        now = datetime.now()
+        now = datetime.utcnow()
         then = datetime.fromtimestamp(self.timestamp)
-        delta = now - then
-        if delta.seconds < 60:
-            return str(delta.seconds) + " seconds"
-        if delta.seconds < 3600:
-            return str(delta.seconds / 60) + " minutes"
-        return str(delta.seconds / 3600) + " hours"
+        t_delta = now - then
+        delta = t_delta.total_seconds()
+        if delta < 3600:
+            minute_delta = delta / 60
+            return "%s minutes" % format(minute_delta, ".0f")
+        elif delta < 86400:
+            hour_delta = delta / 3600
+            return "%s hours" % format(hour_delta, ".0f")
+        else:
+            #Note, timedelta stores seconds and days, hence the odd cases
+            day_delta = t_delta.days + math.floor(t_delta.seconds / 43200)
+            return "%s days" % day_delta
 
     def get_absolute_url(self):
         return self.article_url or "https://news.ycombinator.com/item?id=" + str(self.hn_id)

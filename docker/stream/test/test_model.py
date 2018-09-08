@@ -1,13 +1,15 @@
+import time
 import unittest
+from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from stream.models import User, Article, Tag, Item
-from test import dbconn_test, test_user, test_article
+from docker.stream.stream.models import User, Article, Tag, Item
+from . import dbconn_test, test_user, test_article
 
 
-class TestModelLoading(unittest.TestCase):
+class TestModel(unittest.TestCase):
     engine = create_engine(dbconn_test)
     Session = sessionmaker(bind=engine)
 
@@ -80,7 +82,7 @@ class TestModelLoading(unittest.TestCase):
         self.assertTrue(item.top_parent)
         self.assertTrue(isinstance(item.top_parent, Article))
 
-    def user_all_articles_is_superset(self):
+    def test_user_all_articles_is_superset(self):
         user = self.user()
         self.assertTrue(user)
 
@@ -90,7 +92,7 @@ class TestModelLoading(unittest.TestCase):
         self.assertFalse(all_articles == articles, "Articles and all_articles are equal")
         self.assertTrue(set.issubset(all_articles, articles), "Articles is not a subset")
 
-    def user_all_articles_contains_other_submitters(self):
+    def test_user_all_articles_contains_other_submitters(self):
         user = self.user()
 
         all_articles = user.all_articles()
@@ -101,11 +103,69 @@ class TestModelLoading(unittest.TestCase):
 
         self.assertTrue(submitter_different, "None of the articles in the superset were submitted by another user")
 
-    def user_tag_compilation(self):
+    def test_user_tag_compilation(self):
         user = self.user()
         tags = user.get_tags()
 
         self.assertTrue(len(tags) > 0)
+
+    def test_article_age(self):
+
+        article = Article()
+        article.timestamp = datetime.utcnow().timestamp()
+
+        article.timestamp = (datetime.utcnow() - timedelta(seconds=1)).timestamp()
+        age_output = article.age()
+        self.assertEqual("0 minutes", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(seconds=29)).timestamp()
+        age_output = article.age()
+        self.assertEqual("0 minutes", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(seconds=30)).timestamp()
+        age_output = article.age()
+        self.assertEqual("1 minutes", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(minutes=2)).timestamp()
+        age_output = article.age()
+        self.assertEqual("2 minutes", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(minutes=2, seconds=7)).timestamp()
+        age_output = article.age()
+        self.assertEqual("2 minutes", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(minutes=2, seconds=30)).timestamp()
+        age_output = article.age()
+        self.assertEqual("3 minutes", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(hours=2)).timestamp()
+        age_output = article.age()
+        self.assertEqual("2 hours", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(hours=2, minutes=29, seconds=59)).timestamp()
+        age_output = article.age()
+        self.assertEqual("2 hours", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(hours=2, minutes=30)).timestamp()
+        age_output = article.age()
+        self.assertEqual("3 hours", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(days=2)).timestamp()
+        age_output = article.age()
+        self.assertEqual("2 days", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(days=2, hours=11, minutes=59, seconds=59)).timestamp()
+        age_output = article.age()
+        self.assertEqual("2 days", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(days=2, hours=12, minutes=0, seconds=1)).timestamp()
+        age_output = article.age()
+        self.assertEqual("3 days", age_output)
+
+        article.timestamp = (datetime.utcnow() - timedelta(days=2, hours=23, minutes=59, seconds=59)).timestamp()
+        age_output = article.age()
+        self.assertEqual("3 days", age_output)
+
 
 if __name__ == '__main__':
     unittest.main()
