@@ -70,19 +70,19 @@ class User(Base):
 
         if not self._article_cache:
             self._article_cache = set()
-            for article in self.article_set.all():
+            for article in self.articles:
                 self._article_cache.add(article.hn_id)
         if not self._item_cache:
             self._item_cache = set()
-            for item in self.article_set.all():
+            for item in self.articles:
                 self._item_cache.add(item.hn_id)
 
         return hn_id in self._article_cache or hn_id in self._item_cache
 
     def all_articles(self):
         """Returns all articles this user has interacted with"""
-        top_parents = map(func_top_parent, self.item_set.all())
-        return list(filter(None, list(self.article_set.all()) + list(top_parents)))
+        top_parents = map(func_top_parent, self.items)
+        return list(filter(None, list(self.articles) + list(top_parents)))
 
     def get_tags(self):
         tags = {}
@@ -159,18 +159,21 @@ class Article(Base):
                 return netloc
 
     def age(self):
-        now = datetime.now()
+        now = datetime.utcnow()
         then = datetime.fromtimestamp(self.timestamp)
-        delta = now - then
-
-        if delta.seconds < 60:
-            return "%s seconds" % delta.seconds
-        elif delta.seconds < 3600:
-            minute_delta = delta.seconds / 60
+        t_delta = now - then
+        delta = t_delta.total_seconds()
+        if delta < 60:
+            return "%s seconds" % delta
+        elif delta < 3600:
+            minute_delta = delta / 60
             return "%s minutes" % format(minute_delta, ".0f")
-        else:
-            hour_delta = delta.seconds / 3600
+        elif delta < 86400:
+            hour_delta = delta / 3600
             return "%s hours" % format(hour_delta, ".0f")
+        else:
+            #Note, timedelta stores seconds and days, hence the odd cases
+            return "%s days" % t_delta.days
 
     def get_absolute_url(self):
         return self.article_url or "https://news.ycombinator.com/item?id=" + str(self.hn_id)
