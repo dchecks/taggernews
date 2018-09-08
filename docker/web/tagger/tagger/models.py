@@ -167,7 +167,7 @@ class Article(Base):
             return "%s seconds" % delta.seconds
         elif delta.seconds < 3600:
             minute_delta = delta.seconds / 60
-            return "%.f minutes" % format(minute_delta, ".0f")
+            return "%s minutes" % format(minute_delta, ".0f")
         else:
             hour_delta = delta.seconds / 3600
             return "%s hours" % format(hour_delta, ".0f")
