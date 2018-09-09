@@ -16,15 +16,25 @@ services:
     volumes:
       - ./web/tagger:/usr/src/app
     ports:
-      - "8000:8000"
+      - "80:8000"
     depends_on:
       - db
   stream:
+    restart: on-failure
     build: ./stream
     networks:
       - main
     volumes:
       - ./stream/stream:/usr/src/app
+    depends_on:
+      - db
+  refresh:
+     restart: on-failure
+    build: ./refresh
+    networks:
+      - main
+    volumes:
+      - ./refresh/refresh:/usr/src/app
     depends_on:
       - db
 volumes:
