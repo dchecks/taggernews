@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 import requests
-from db import Session
+from tagger.db import Session
 from tagger.models import User
 
 USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'

@@ -76,6 +76,7 @@ class Refresher:
 
 def refresh_top():
     # TODO Loop this or reschedule the job?
+    print("Starting refresh loop")
     while True:
         start_time = time.time()
         ses = Session()
