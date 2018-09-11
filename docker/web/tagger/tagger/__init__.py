@@ -2,15 +2,10 @@ import logging
 from datetime import datetime
 
 import requests
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
-
+from db import Session
 from tagger.models import User
 
 USER_URL = 'https://hacker-news.firebaseio.com/v0/user/'
-dbconn = "mysql://<USERNAME:PASSWORD@db:3306/tagger?charset=utf8mb4"
-engine = create_engine(dbconn)
-Session = scoped_session(sessionmaker(bind=engine))
 
 
 def fetch_blacklist():
