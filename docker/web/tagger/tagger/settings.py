@@ -80,10 +80,10 @@ WSGI_APPLICATION = 'tagger.wsgi.application'
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
 
-db_u = os.environ("MYSQL_USER")
-db_p = os.environ("MYSQL_PASSWORD")
-db_host = os.environ("MYSQL_HOST")
-db_db = os.environ("MYSQL_DATABASE")
+db_u = os.environ["MYSQL_USER"]
+db_p = os.environ["MYSQL_PASSWORD"]
+db_host = os.environ["MYSQL_HOST"]
+db_db = os.environ["MYSQL_DATABASE"]
 
 DATABASES = {
     'default': {

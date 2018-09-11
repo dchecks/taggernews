@@ -5,10 +5,10 @@ import time
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-db_u = os.environ("MYSQL_USER")
-db_p = os.environ("MYSQL_PASSWORD")
-db_host = os.environ("MYSQL_HOST")
-db_db = os.environ("MYSQL_DATABASE")
+db_u = os.environ["MYSQL_USER"]
+db_p = os.environ["MYSQL_PASSWORD"]
+db_host = os.environ["MYSQL_HOST"]
+db_db = os.environ["MYSQL_DATABASE"]
 
 dbconn = "mysql://%s:%s@%s:3306/%s?charset=utf8mb4" % (db_u, db_p, db_host, db_db)
 
