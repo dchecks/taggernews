@@ -1,15 +1,19 @@
 version: '2'
 services:
   db:
+    env_file:
+      - ./.env
     build: ./db
     networks:
       - main
     ports:
       - "3306:3306"
     volumes:
-      - db_data:/opt/taggernews/mysql_data
+      - /opt/db:/var/lib/mysql
     restart: always
   web:
+    env_file:
+      - ./.env
     build: ./web
     networks:
       - main
@@ -20,6 +24,8 @@ services:
     depends_on:
       - db
   stream:
+    env_file:
+      - ./.env
     restart: on-failure
     build: ./stream
     networks:
@@ -29,7 +35,9 @@ services:
     depends_on:
       - db
   refresh:
-     restart: on-failure
+    env_file:
+      - ./.env
+    restart: on-failure
     build: ./refresh
     networks:
       - main

@@ -1,5 +1,5 @@
 mysqlclient==1.3.12
 goose3
-sseclient
 sqlalchemy
 sqlalchemy-utils
+sseclient

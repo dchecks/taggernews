@@ -79,13 +79,19 @@ WSGI_APPLICATION = 'tagger.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
+
+db_u = os.environ("MYSQL_USER")
+db_p = os.environ("MYSQL_PASSWORD")
+db_host = os.environ("MYSQL_HOST")
+db_db = os.environ("MYSQL_DATABASE")
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'tagger',
-        'USER': 'tagger_client',
-        'PASSWORD': 'izzDARu11dul',
-        'HOST': 'db',
+        'NAME': db_db,
+        'USER': db_u,
+        'PASSWORD': db_p,
+        'HOST': db_host,
         'PORT': '3306',
     }
 }
