@@ -19,7 +19,11 @@ RETRY_LIMIT = 10
 while not engine and engine_failure < RETRY_LIMIT:
     try:
         engine = create_engine(dbconn)
-    except:
+        connection = engine.connect()
+        connection.execute("select 1 as result")
+        connection.close()
+    except Exception as e:
+        print(e)
         wait_time = engine_failure * engine_failure
         engine_failure += 1
         logging.info("Database start failure %s, waiting %s" % (engine_failure, wait_time))
