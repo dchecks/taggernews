@@ -88,7 +88,7 @@ class User(Base):
     def get_tags(self):
         tags = {}
         for article in self.all_articles():
-            for tag in article.tags.all():
+            for tag in article.tags:
                 if tag.name not in tags:
                     tags[tag.name] = 1
                 else:

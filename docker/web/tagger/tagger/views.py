@@ -21,8 +21,7 @@ def news(request, page="1"):
     end = page_number * 30
     ses = Session()
 
-    articles = ses.query(Article).filter(Article.rank != None).order_by(desc('rank'))[start:end]
-                        # .prefetch_related('tags', 'submitter')
+    articles = ses.query(Article).filter(Article.rank != None).order_by('rank')[start:end]
 
     context = {
         "articles": articles,

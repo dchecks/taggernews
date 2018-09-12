@@ -39,7 +39,7 @@
 {% for tag in tags %}
     <tr>
         <td></td>
-        <td><span class='tag'>" + tag. + "</span> " + element[1] + "<br /></td></td>
+        <td><span class='tag'>{{ tag.0 }}</span> {{ tag.1 }}<br /></td></td>
     </tr>
 {% endfor %}
 </table>
