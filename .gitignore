@@ -22,3 +22,4 @@ tests/report/
 staticfiles
 articles/model/
 ml_models/
+.env

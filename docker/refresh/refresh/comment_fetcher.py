@@ -1,16 +1,8 @@
-import os
 import traceback
 import logging
 import requests
 
-from django.core.wsgi import get_wsgi_application
-from whitenoise.django import DjangoWhiteNoise
-
-if __name__ == "__main__":
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tagger.settings")
-    application = get_wsgi_application()
-    application = DjangoWhiteNoise(application)
-from tagger.models import User, Item
+from models import User, Item
 
 ITEM_URL = 'https://hacker-news.firebaseio.com/v0/item/%s.json'
 
