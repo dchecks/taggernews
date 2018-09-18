@@ -1,0 +1,6 @@
+#Fill out the ******** fields then rename this file '.env'
+MYSQL_ROOT_PASSWORD=********
+MYSQL_DATABASE=tagger
+MYSQL_USER=tagger_client
+MYSQL_PASSWORD=********
+MYSQL_HOST=db
