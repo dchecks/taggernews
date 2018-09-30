@@ -15,7 +15,7 @@ REFRESH_INTERVAL = 300
 
 class Refresher:
     def __init__(self, session, article_fetcher, comment_fetcher):
-        self.ses = session
+        self.ses = Session()
         self.article_fetcher = article_fetcher
         self.comment_fetcher = comment_fetcher
 
@@ -79,15 +79,19 @@ def refresh_top():
     print("Starting refresh loop")
     while True:
         start_time = time.time()
-        ses = Session()
-        arty = ArticleFetcher()
-        commy = CommentFetcher()
-        refresher = Refresher(ses, arty, commy)
-        refresher.refresh()
-        ses.commit()
+        ses = None
+        try:
+            arty = ArticleFetcher()
+            commy = CommentFetcher()
+            refresher = Refresher(ses, arty, commy)
+            refresher.refresh()
+        except Exception as e:
+            logging.error("Refresh failed, %s" % e)
+            if ses:
+                ses.rollback()
 
         duration = time.time() - start_time
-        logging.info('Loop complete, duration %s' % duration)
+        logging.info('Loop duration %s' % duration)
 
         if duration < REFRESH_INTERVAL:
             sleep_time = REFRESH_INTERVAL - duration

@@ -100,15 +100,18 @@ class ArticleFetcher:
             timer = time.time()
             self.STAT_TOTAL_REQUESTED += 1
 
-            article = self.fetch_item_or_article_by_id(aid)
-            Session().add(article)
-            ret_list.append(article)
-            logging.info('Fetched %s (%ss)' % (str(aid), str(round(time.time() - timer, 2))))
+            hn_object = self.fetch_item_or_article_by_id(aid)
+            if hn_object:
+                Session().add(hn_object)
+                ret_list.append(hn_object)
+                logging.info('Fetched %s (%s s)' % (aid, round(time.time() - timer, 2)))
+            else:
+                logging.info('Error retrieving hn_id %s' % aid)
+            Session().commit()
 
             if self.STAT_TOTAL_REQUESTED % 100 == 0:
                 self.print_stats()
 
-        Session().commit()
         return ret_list
 
     def fetch_item_or_article_by_id(self, hn_id):
@@ -120,9 +123,10 @@ class ArticleFetcher:
             # load the meta from HN
             item = self.hn_fetch(hn_id)
 
-        if not isinstance(item, Article):
-            return item
-        else:
+        if not item:
+            return None
+
+        if isinstance(item, Article):
             article = item
             if article.state is None or article.state == 6 or article.state == 3:
                 # Get the article text
@@ -150,6 +154,8 @@ class ArticleFetcher:
                     Session().add(article)
 
             return article
+        else:
+            return item
 
     def goose_fetch(self, article_url):
         """Fetch the text from the given url"""
@@ -195,11 +201,7 @@ class ArticleFetcher:
 
         if api_response is None:
             self.STAT_HN_UNKNOWN += 1
-            return Article(
-                hn_id=hn_id,
-                state=1,
-                parsed=datetime.utcnow()
-            )
+            return None
 
         if api_response.get('type') != 'story':
             item = self.hn_fetch_item(hn_id, api_response)
