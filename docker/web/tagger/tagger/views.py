@@ -3,25 +3,34 @@ from __future__ import unicode_literals
 
 import logging
 from operator import attrgetter
-
-from django.db.models import Count
 from django.shortcuts import render
-from sqlalchemy import desc
 
+from models import User
 from tagger import fetch_user
-from tagger.models import Article, Tag
-
+from models import Article, Tag
 from tagger import Session
+
+
+def site_check(blocked, input):
+    for site in blocked:
+        if input.site() == site:
+            return True
+    return False
 
 
 def news(request, page="1"):
     page_number = int(page)
 
+    # TODO this will reshow the same results at the start of the page that were on the previous page,
+    # if there are filtered results
     start = (page_number - 1) * 30
-    end = page_number * 30
+    end = min(page_number * 30 + 70, 300)
     ses = Session()
 
     articles = ses.query(Article).filter(Article.rank != None).order_by('rank')[start:end]
+    user = ses.query(User).filter(User.id == "aunty_helen").first()
+
+    articles = filter(site_check(user.blocked_sites, articles))
 
     context = {
         "articles": articles,
@@ -97,3 +106,13 @@ def all_tags(request):
 
     return render(request, 'tag_list.html', context)
 
+
+def blocked(request):
+
+    ses = Session()
+    user = ses.query(User).filter(User.id == "aunty_helen").first()
+
+    context = {
+        "blocked_sites": user.blocked
+    }
+    return render(request, 'block.html', context)

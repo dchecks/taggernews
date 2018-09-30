@@ -3,7 +3,7 @@ from django.conf.urls import include
 from django.conf.urls import url
 from django.contrib import admin
 
-from tagger.views import news, user, by_tag, all_tags
+from tagger.views import news, user, by_tag, all_tags, blocked
 
 urlpatterns = [
   url(r'^$', news),
@@ -13,6 +13,7 @@ urlpatterns = [
   url(r'^tags/(?P<tag_string>[A-Za-z\/ ]+(\+[A-Za-z\/ ]+)*)/$', by_tag),
   url(r'^tags/(?P<tag_string>[A-Za-z\/ ]+(\+[A-Za-z\/ ]+)*)/(?P<page>\d+)$', by_tag),
   url(r'^tags/$', all_tags),
+  url(r'^blocked/$', blocked),
   url(r'^admin/', admin.site.urls)
 
 ]

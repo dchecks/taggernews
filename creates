@@ -74,6 +74,20 @@ create table tagger.tagger_article_tags(
     primary key (id)
 );
 
+create table tagger.tagger_site(
+    site_id int not null auto_increment,
+    name integer not null,
+    url varchar(191),
+    primary key (site_id)
+);
+
+create table tagger.tagger_user_blocked_sites(
+    user_id varchar(15) not null,
+    site_id int not null,
+    foreign key fk_blocked_site_user(user_id) references tagger_user(id),
+    foreign key fk_blocked_site_site(site_id) references tagger_site(site_id)
+);
+
 alter table tagger.tagger_article_tags add index article_idx (article_id);
 alter table tagger.tagger_article_tags add constraint fk_article FOREIGN KEY (article_id) references tagger_article(hn_id);
 

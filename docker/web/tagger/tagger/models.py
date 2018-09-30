@@ -31,6 +31,10 @@ article_tags_table = Table('tagger_article_tags', Base.metadata,
                            Column('article_id', Integer, ForeignKey('tagger_article.hn_id')),
                            Column('tag_id', Integer, ForeignKey('tagger_tag.id'))
                            )
+user_blocked_site_table = Table('tagger_user_blocked_sites', Base.metadata,
+                                Column('user_id', String(15), ForeignKey('tagger_user.id')),
+                                Column('site_id', Integer, ForeignKey('tagger_site.site_id'))
+                                )
 
 
 class User(Base):
@@ -63,8 +67,8 @@ class User(Base):
 
     def __str__(self):
         return 'User ' + self.id \
-               + ",\n state=" + str(self.state)\
-               + ",\n last_parsed=" + str(self.last_parsed)\
+               + ",\n state=" + str(self.state) \
+               + ",\n last_parsed=" + str(self.last_parsed) \
                + ",\n priority=" + str(self.priority)
 
     def has_cached(self, hn_id):
@@ -149,15 +153,7 @@ class Article(Base):
         return self.title
 
     def site(self):
-        if not self.article_url:
-            return None
-        else:
-            netloc = urlparse(self.get_absolute_url()).netloc
-            path = netloc.split(".")
-            try:
-                return path[-2] + "." + path[-1]
-            except:
-                return netloc
+        return _url_to_site(self.get_absolute_url())
 
     def age(self):
         now = datetime.utcnow()
@@ -171,7 +167,7 @@ class Article(Base):
             hour_delta = delta / 3600
             return "%s hours" % format(hour_delta, ".0f")
         else:
-            #Note, timedelta stores seconds and days, hence the odd cases
+            # Note, timedelta stores seconds and days, hence the odd cases
             day_delta = t_delta.days + math.floor(t_delta.seconds / 43200)
             return "%s days" % day_delta
 
@@ -187,6 +183,26 @@ class ArticleText(Base):
 
     parsed = Column(DateTime())
     text = Column(Text(), nullable=True)
+
+
+class Site(Base):
+    __tablename__ = 'tagger_site'
+    site_id = Column(Integer(), primary_key=True, autoincrement=True)
+
+    name = Column(String(191))
+    site_url = Column(String(191)) # This should be in the output format of the url_to_site
+
+
+def _url_to_site(url):
+    if not url:
+        return None
+    else:
+        netloc = urlparse(url).netloc
+        path = netloc.split(".")
+        try:
+            return path[-2] + "." + path[-1]
+        except:
+            return None
 
 
 def func_top_parent(item):
